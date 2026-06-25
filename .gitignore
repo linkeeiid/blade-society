@@ -2,6 +2,9 @@
 input/
 assets/three.module.js
 
+# Secrets (ne JAMAIS publier)
+VAPID-KEYS.txt
+
 # Fichiers système
 .DS_Store
 Thumbs.db

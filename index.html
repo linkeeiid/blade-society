@@ -234,6 +234,9 @@
   .bday button:last-child{border-left:var(--bw) solid var(--line)}
   .bday button:hover{background:var(--ink);color:#0d0d0d}
   .bsub{font-family:'Space Mono',monospace;font-size:11px;letter-spacing:0.08em;text-transform:uppercase;color:var(--faint);margin-bottom:14px}
+  .bpush{display:block;width:100%;margin-bottom:14px;padding:13px;border-radius:var(--radius);background:var(--chrome);color:#0d0d0d;border:none;font-family:'Space Mono',monospace;font-size:12px;letter-spacing:0.08em;text-transform:uppercase;font-weight:700;cursor:pointer;transition:transform .25s}
+  .bpush:hover{transform:translateY(-2px)}
+  .bpush.on{background:none;border:var(--bw) solid var(--line);color:var(--mut);font-weight:400;cursor:default}
   .agenda{border-top:var(--bw) solid var(--line)}
   .aslot{display:grid;grid-template-columns:50px 5px 1fr auto;align-items:center;gap:12px;padding:11px 4px;border-bottom:var(--bw) solid var(--line)}
   .aslot .t{font-family:'Space Mono',monospace;font-size:13px;color:var(--mut)}
@@ -483,6 +486,10 @@ const CFG = {
   EMAILJS_TEMPLATE_CLIENT: '',   // mail de confirmation envoyé AU CLIENT
   EMAILJS_TEMPLATE_ID:     '',   // (optionnel) mail envoyé au barber
 
+  // ---- NOTIFICATIONS PUSH (app PWA, via Cloudflare Worker) ----
+  VAPID_PUBLIC_KEY: 'BB4WXyAbUQOZasrJVcQtBXRnh9iWNTB8OQV6LWAI6WfdeO7yDJjr9OWjXQrddxm60rAqoiVtZNjfk7gTBwI4Moc',
+  PUSH_ENDPOINT: '',   // URL du Worker Cloudflare (ex: https://blade-society-push.xxx.workers.dev)
+
   // ---- ESPACE BARBER ----
   BARBER_PASSWORD: 'GiovanyBlade',
 };
@@ -500,6 +507,11 @@ const MONF   = ['janvier','février','mars','avril','mai','juin','juillet','aoû
 const pad    = (n) => String(n).padStart(2,'0');
 const isoOf  = (d) => d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());
 const esc    = (s) => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const urlB64ToU8 = (s) => {                       // clé VAPID base64url -> Uint8Array (pour PushManager)
+  const pad = '='.repeat((4 - s.length % 4) % 4);
+  const b = atob((s + pad).replace(/-/g,'+').replace(/_/g,'/'));
+  const a = new Uint8Array(b.length); for (let i=0;i<b.length;i++) a[i]=b.charCodeAt(i); return a;
+};
 
 const SERVICES = [
   { no:'01', name:'Coupe simple',                desc:'Travail au ciseau, finitions nettes',     duration:'45 min', price:'20€' },
@@ -648,7 +660,7 @@ const App = {
     viewY:0, viewM:0,
     name:'', phone:'', email:'', error:'', submitting:false,
     bookings:{}, confirmed:null,
-    barberOpen:false, barberPw:'', barberAuthed:false, barberError:'', barberDay:'',
+    barberOpen:false, barberPw:'', barberAuthed:false, barberError:'', barberDay:'', pushOn:false,
   },
   MONTHS_AHEAD: 12,   // nombre de mois consultables vers l'avenir
 
@@ -765,7 +777,8 @@ const App = {
     // envoyé au barber (privé, notification) : coordonnées complètes
     const full = { name, phone, email, date:this.state.selectedDate, time:this.state.selectedSlot, service:svc.name, price:svc.price };
     await this.putStore(key, slot);
-    this.notify(full);        // notification au barber (en arrière-plan)
+    this.notify(full);        // notification Telegram au barber (en arrière-plan)
+    this.pushBarber(full);    // notification push (app) au barber (en arrière-plan)
     this.emailClient(full);   // email de confirmation au client (en arrière-plan)
     const bookings = Object.assign({}, fresh, { [key]: slot });
     this.set({ bookings, confirmed:full, submitting:false, selectedSlot:null, selectedService:null, name:'', phone:'', email:'' });
@@ -785,6 +798,42 @@ const App = {
   barberLogout(){
     try { localStorage.removeItem(LS_BARBER); } catch(e){}
     this.set({ barberAuthed:false, barberOpen:false });
+  },
+  // Giovany active les notifications push sur SON appareil (app installée)
+  async enablePush(){
+    if (!('serviceWorker' in navigator) || !('PushManager' in window)){
+      this.set({ barberError:'Notifications non supportées sur cet appareil. Installe l’app sur l’écran d’accueil.' });
+      return;
+    }
+    if (!CFG.PUSH_ENDPOINT){ this.set({ barberError:'Serveur de notifications non configuré.' }); return; }
+    try {
+      const perm = await Notification.requestPermission();
+      if (perm !== 'granted'){ this.set({ barberError:'Notifications refusées dans les réglages.' }); return; }
+      const reg = await navigator.serviceWorker.ready;
+      let sub = await reg.pushManager.getSubscription();
+      if (!sub){
+        sub = await reg.pushManager.subscribe({ userVisibleOnly:true, applicationServerKey: urlB64ToU8(CFG.VAPID_PUBLIC_KEY) });
+      }
+      const r = await fetch(CFG.PUSH_ENDPOINT.replace(/\/$/,'') + '/subscribe', {
+        method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(sub),
+      });
+      if (!r.ok) throw new Error('subscribe failed');
+      try { localStorage.setItem('bs_push','1'); } catch(e){}
+      this.set({ pushOn:true, barberError:'' });
+    } catch(e){
+      this.set({ barberError:'Activation impossible. Ouvre l’app depuis l’écran d’accueil et réessaie.' });
+    }
+  },
+  // envoi de la notification push au barber au moment d'une réservation
+  async pushBarber(b){
+    if (!CFG.PUSH_ENDPOINT) return;
+    const body = this.prettyDate(b.date) + ' à ' + b.time + ' · ' + (b.service || 'RDV') + '\n' + (b.name || '');
+    try {
+      await fetch(CFG.PUSH_ENDPOINT.replace(/\/$/,'') + '/notify', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ title:'Blade Society — nouvelle réservation', body, url:'./index.html' }),
+      });
+    } catch(e){}
   },
   async cancelBooking(key){
     await this.delStore(key);
@@ -993,6 +1042,10 @@ const App = {
           <button data-act="bnext" aria-label="Jour suivant">›</button>
         </div>
         <div class="bsub">${count} rendez-vous · journée 10h–19h</div>
+        ${s.pushOn
+          ? `<div class="bpush on">🔔 Notifications activées sur cet appareil</div>`
+          : `<button class="bpush" data-act="enablePush">🔔 Activer les notifications sur cet appareil</button>`}
+        ${s.barberError ? `<div class="err" style="margin:0 0 12px">! ${esc(s.barberError)}</div>` : ''}
         <div class="agenda">${rows}</div>
         <div class="blegend">${legend}</div>`;
     }
@@ -1020,6 +1073,7 @@ document.getElementById('reserver').addEventListener('click', (e) => {
   else if (act === 'bprev')   App.barberShiftDay(-1);
   else if (act === 'bnext')   App.barberShiftDay(1);
   else if (act === 'block')   App.blockSlot(t.dataset.key);
+  else if (act === 'enablePush') App.enablePush();
   else if (act === 'logout')  App.barberLogout();
   else if (act === 'cancel')  App.cancelBooking(t.dataset.key);
   else if (act === 'barberSubmit') App.barberSubmit();
@@ -1051,6 +1105,7 @@ document.getElementById('menu').addEventListener('click', (e) => {
 /* ---------------- démarrage ---------------- */
 App.buildDays();
 try { if (localStorage.getItem(LS_BARBER) === '1') App.state.barberAuthed = true; } catch(e){}  // connexion barber mémorisée
+try { if (localStorage.getItem('bs_push') === '1') App.state.pushOn = true; } catch(e){}          // notifs déjà activées
 App.refresh();
 setInterval(() => App.refresh(), 20000);
 window.addEventListener('focus', () => App.refresh());
