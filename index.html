@@ -305,6 +305,7 @@
     <a class="hide-sm" href="#apropos">À propos</a>
     <a class="hide-sm" href="#services">Services</a>
     <a class="hide-sm" href="#galerie">Galerie</a>
+    <a id="navPlanning" href="#reserver" style="display:none">Planning</a>
     <a class="cta" href="#reserver">Réserver →</a>
   </div>
 </nav>
@@ -790,6 +791,7 @@ const App = {
     if (this.state.barberPw === CFG.BARBER_PASSWORD){
       try { localStorage.setItem(LS_BARBER, '1'); } catch(e){}   // reste connecté
       this.set({ barberAuthed:true, barberError:'', barberPw:'' });
+      this.refreshNav();
       this.refresh();
     } else {
       this.set({ barberError:'Mot de passe incorrect.' });
@@ -798,6 +800,20 @@ const App = {
   barberLogout(){
     try { localStorage.removeItem(LS_BARBER); } catch(e){}
     this.set({ barberAuthed:false, barberOpen:false });
+    this.refreshNav();
+  },
+  // affiche le lien "Planning" du menu uniquement quand Giovany est connecté
+  refreshNav(){
+    const el = document.getElementById('navPlanning');
+    if (el) el.style.display = this.state.barberAuthed ? 'flex' : 'none';
+  },
+  // ouvre le planning et défile jusqu'à lui (depuis le menu ou une notification)
+  openPlanning(){
+    this.set({ barberOpen:true });
+    setTimeout(() => {
+      const el = document.getElementById('barberPane') || document.getElementById('reserver');
+      if (el) el.scrollIntoView({ behavior:'smooth', block:'start' });
+    }, 80);
   },
   // Giovany active les notifications push sur SON appareil (app installée)
   async enablePush(){
@@ -831,7 +847,7 @@ const App = {
     try {
       await fetch(CFG.PUSH_ENDPOINT.replace(/\/$/,'') + '/notify', {
         method:'POST', headers:{'Content-Type':'application/json'},
-        body: JSON.stringify({ title:'Blade Society — nouvelle réservation', body, url:'./index.html' }),
+        body: JSON.stringify({ title:'Blade Society — nouvelle réservation', body, url:'./index.html#planning' }),
       });
     } catch(e){}
   },
@@ -886,7 +902,7 @@ const App = {
       return `<div class="confirmed">
         <div class="big">C'est noté.</div>
         <p class="l1">${esc((s.confirmed.service ? s.confirmed.service + ' · ' : '') + this.prettyDate(s.confirmed.date) + ' · ' + s.confirmed.time)}</p>
-        <p class="l2">Un rappel a été transmis à Giovany. À très vite chez Blade Society.</p>
+        <p class="l2">Votre réservation a été validée. Vous allez recevoir une confirmation dans quelques instants…</p>
         <button class="ghost" data-act="reset">Réserver un autre créneau</button>
       </div>`;
     }
@@ -1106,7 +1122,19 @@ document.getElementById('menu').addEventListener('click', (e) => {
 App.buildDays();
 try { if (localStorage.getItem(LS_BARBER) === '1') App.state.barberAuthed = true; } catch(e){}  // connexion barber mémorisée
 try { if (localStorage.getItem('bs_push') === '1') App.state.pushOn = true; } catch(e){}          // notifs déjà activées
+App.refreshNav();
 App.refresh();
+
+/* lien "Planning" du menu */
+document.getElementById('navPlanning').addEventListener('click', (e) => { e.preventDefault(); App.openPlanning(); });
+
+/* arrivée depuis un clic sur la notification -> ouvrir le planning */
+if (location.hash === '#planning') App.openPlanning();
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.addEventListener('message', (e) => {
+    if (e.data && e.data.action === 'open-planning') App.openPlanning();
+  });
+}
 setInterval(() => App.refresh(), 20000);
 window.addEventListener('focus', () => App.refresh());
 
