@@ -1,0 +1,1088 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Blade Society — Architecte capillaire · Villeurbanne</title>
+<meta name="description" content="Blade Society — barbershop privé sur rendez-vous à Villeurbanne. Travail au ciseau, dégradés millimétrés, rasage traditionnel. Réservation en ligne.">
+<link rel="icon" href="assets/logo-fondu.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=Archivo:wght@400;500;600;700;800;900&family=Archivo+Black&family=Oswald:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  /* ============================ TOKENS ============================ */
+  :root{
+    --bg:#0a0a0a; --panel:#111111; --panel2:#171717;
+    --ink:#eceae3; --mut:#a9a79e; --faint:#6f6e66;
+    --line:rgba(236,234,227,0.15);
+    --chrome:linear-gradient(177deg,#fafafb,#d2d3d7 45%,#a6a7ac 55%,#ededf0);
+    --solid:#d2d3d7;
+    --display:'Anton',sans-serif;
+    --radius:0px; --bw:1px; --gridCol:100px; --heroK:1;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{background:#0a0a0a;font-family:'Archivo',sans-serif;color:var(--ink);overflow-x:hidden;position:relative;-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
+  ::selection{background:#eceae3;color:#0d0d0d}
+  input::placeholder{color:#56554f}
+  a{color:inherit}
+  .mono{font-family:'Space Mono',monospace}
+  .display{font-family:var(--display);font-weight:400}
+  .head{font-family:var(--display);font-weight:400;text-transform:uppercase;letter-spacing:-0.01em;line-height:0.84;color:var(--ink)}
+  .wrap{max-width:1240px;margin:0 auto}
+  .reveal{opacity:0;transform:translateY(26px);transition:opacity 1s cubic-bezier(.2,.7,.2,1),transform 1s cubic-bezier(.2,.7,.2,1)}
+  .reveal.in{opacity:1;transform:none}
+  .eyebrow{font-family:'Space Mono',monospace;font-size:12px;color:#8f8d84;letter-spacing:0.04em;border-bottom:var(--bw) solid var(--line);padding-bottom:18px;margin-bottom:clamp(30px,4vw,48px)}
+  .eyebrow.split{display:flex;justify-content:space-between;flex-wrap:wrap;gap:10px}
+  .sect{position:relative;padding:clamp(70px,10vw,140px) clamp(20px,4vw,40px)}
+  @media(max-width:780px){.hide-sm{display:none!important}}
+
+  /* ============================ GRAIN / GRID ============================ */
+  .grain{position:fixed;inset:0;z-index:200;pointer-events:none;mix-blend-mode:overlay;opacity:0.5;background-image:url('data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%27180%27 height=%27180%27%3E%3Cfilter id=%27n%27%3E%3CfeTurbulence type=%27fractalNoise%27 baseFrequency=%270.85%27 numOctaves=%272%27 stitchTiles=%27stitch%27/%3E%3C/filter%3E%3Crect width=%27100%25%27 height=%27100%25%27 filter=%27url(%23n)%27/%3E%3C/svg%3E');background-size:180px 180px}
+
+  /* ============================ NAV ============================ */
+  nav{position:fixed;top:0;left:0;right:0;z-index:60;display:flex;align-items:stretch;justify-content:space-between;background:rgba(13,13,13,0.82);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border-bottom:var(--bw) solid var(--line)}
+  .brand{display:flex;align-items:center;gap:11px;text-decoration:none;padding:0 clamp(18px,3vw,34px)}
+  .brand img{width:50px;height:50px;object-fit:contain;mix-blend-mode:screen}
+  .brand span{font-weight:900;font-size:clamp(14px,1.4vw,17px);letter-spacing:0.04em;text-transform:uppercase;color:var(--ink)}
+  .navlinks{display:flex;align-items:stretch;font-family:'Space Mono',monospace}
+  .navlinks a{display:flex;align-items:center;padding:0 24px;border-left:var(--bw) solid var(--line);font-size:11px;letter-spacing:0.1em;text-transform:uppercase;color:var(--mut);text-decoration:none;transition:all .3s}
+  .navlinks a:hover{background:var(--panel2);color:#fff}
+  .navlinks a.cta{padding:18px clamp(22px,2.6vw,34px);background:var(--ink);color:#0d0d0d;font-weight:700;letter-spacing:0.12em}
+  .navlinks a.cta:hover{background:var(--ink);color:#0d0d0d}
+
+  /* ============================ HERO ============================ */
+  header{position:relative;min-height:100vh;display:flex;flex-direction:column;overflow:hidden;border-bottom:calc(var(--bw) + 1px) solid var(--ink)}
+  .hero-bg{position:absolute;inset:0;background:#0a0a0a center center/cover no-repeat;background-image:url('assets/salon.jpg');transform:scale(1.04);transform-origin:center;will-change:transform}
+  .hero-bg::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(10,10,10,0.55),rgba(10,10,10,0.32) 38%,rgba(10,10,10,0.78) 78%,rgba(10,10,10,0.96));}
+  .hero-grid{position:absolute;inset:0;background-image:linear-gradient(90deg,rgba(236,234,227,0.05) 1px,transparent 1px);background-size:var(--gridCol) 100%}
+  .hero-glow{position:absolute;inset:0;background:radial-gradient(120% 90% at 78% 28%,rgba(150,152,160,0.34),rgba(0,0,0,0) 52%)}
+  .hero-photo{position:absolute;top:44%;left:78%;transform:translate(-50%,-50%);font-family:'Space Mono',monospace;font-size:11px;letter-spacing:0.26em;color:rgba(255,255,255,0.13);text-transform:uppercase}
+  .hero-fade{position:absolute;inset:0;background:linear-gradient(180deg,rgba(13,13,13,0.4),rgba(13,13,13,0) 30%,rgba(13,13,13,0) 55%,rgba(13,13,13,0.92))}
+  .hero-meta{position:relative;margin-top:clamp(96px,12vh,128px);padding:18px clamp(20px,4vw,40px);border-bottom:var(--bw) solid var(--line);border-top:var(--bw) solid var(--line);font-family:'Space Mono',monospace;font-size:clamp(10px,1.1vw,12px);letter-spacing:0.06em;color:#8f8d84;display:flex;justify-content:space-between;flex-wrap:wrap;gap:10px}
+  .hero-title-wrap{position:relative;flex:1;display:flex;align-items:center;justify-content:flex-start;gap:clamp(10px,2.5vw,40px);flex-wrap:wrap;padding:clamp(24px,4vw,48px) clamp(20px,4vw,40px) 0}
+  .hero-title-wrap .hero-title{flex:0 1 auto;min-width:0}
+  #logo3d{flex:0 0 auto;width:clamp(170px,24vw,340px);height:clamp(170px,24vw,340px);margin-left:clamp(16px,9vw,190px);position:relative;cursor:grab;touch-action:pan-y}
+  #logo3d:active{cursor:grabbing}
+  #logo3d canvas{display:block;width:100%!important;height:100%!important}
+  /* --- hero sur téléphone : titre remonté + logo 3D intercalé sous le titre --- */
+  @media(max-width:560px){
+    .hero-meta{margin-top:clamp(70px,10vh,92px)}
+    .hero-title-wrap{flex-direction:column;align-items:flex-start;justify-content:space-evenly;gap:0}
+    #logo3d{display:block;flex:none;margin:0 auto;width:min(42vw,165px);height:min(42vw,165px)}
+  }
+  .hero-title{font-family:var(--display);font-weight:400;font-size:calc(clamp(64px,15.5vw,210px) * var(--heroK));line-height:0.8;letter-spacing:-0.01em;text-transform:uppercase;color:var(--ink)}
+  .hero-title .ltr{display:inline-block;transform-origin:center bottom;transition:transform .2s ease-out;will-change:transform}
+  .hero-foot{position:relative;padding:clamp(24px,3vw,40px) clamp(20px,4vw,40px) clamp(30px,4vw,44px);display:flex;align-items:flex-end;justify-content:space-between;flex-wrap:wrap;gap:28px}
+  .hero-foot p{max-width:360px;font-family:'Space Mono',monospace;font-size:clamp(12px,1.3vw,13.5px);line-height:1.75;color:var(--mut)}
+  .hero-actions{display:flex;align-items:center;gap:18px;flex-wrap:wrap}
+  .link-mono{font-family:'Space Mono',monospace;font-size:12px;letter-spacing:0.06em;text-transform:uppercase;color:var(--mut);text-decoration:none;transition:color .3s}
+  .link-mono:hover{color:#fff}
+
+  /* ============================ BUTTONS ============================ */
+  .btn-chrome{background:var(--chrome);color:#0d0d0d;padding:17px 38px;border-radius:var(--radius);font-size:12px;letter-spacing:0.14em;text-transform:uppercase;font-weight:700;text-decoration:none;border:none;cursor:pointer;display:inline-block;transition:transform .3s,box-shadow .3s}
+  .btn-chrome:hover{transform:translateY(-2px);box-shadow:0 14px 32px rgba(0,0,0,0.5)}
+
+  /* ============================ À PROPOS ============================ */
+  .about-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:clamp(36px,5vw,72px);align-items:start}
+  .about-photo{position:relative;aspect-ratio:4/5;background:linear-gradient(155deg,#1f1f1f,#0a0a0a);border:var(--bw) solid var(--line);border-radius:var(--radius);overflow:hidden;display:flex;align-items:center;justify-content:center}
+  .about-photo img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center 46%;display:block;filter:brightness(.64) contrast(1.04) saturate(.7)}
+  .about-photo::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(10,10,10,0.2),rgba(10,10,10,0.55));pointer-events:none}
+  .about-photo span{font-family:'Space Mono',monospace;font-size:10.5px;letter-spacing:0.26em;text-transform:uppercase;color:rgba(255,255,255,0.16)}
+  .about h2{font-size:clamp(40px,6vw,76px);line-height:0.86;margin-bottom:30px}
+  .about p{font-size:clamp(15px,1.6vw,17px);line-height:1.8;color:var(--mut);margin-bottom:22px}
+  .stats{display:grid;grid-template-columns:repeat(3,1fr);border-top:calc(var(--bw) + 1px) solid var(--ink)}
+  .stats > div{padding:22px 0;border-right:var(--bw) solid var(--line)}
+  .stats > div:last-child{border-right:none;padding-left:18px}
+  .stats > div:nth-child(2){padding-left:18px}
+  .stats .num{font-family:var(--display);font-size:clamp(26px,3.4vw,40px)}
+  .stats .lab{font-family:'Space Mono',monospace;font-size:10px;letter-spacing:0.12em;text-transform:uppercase;color:var(--faint);margin-top:8px}
+
+  /* ============================ SERVICES ============================ */
+  #services{background:var(--panel);border-top:var(--bw) solid var(--line);border-bottom:var(--bw) solid var(--line)}
+  #services h2{font-size:clamp(44px,7vw,92px);margin-bottom:clamp(40px,6vw,60px)}
+  .menu{border-top:calc(var(--bw) + 1px) solid var(--ink)}
+  .srv{display:grid;grid-template-columns:auto 1fr auto auto;align-items:center;gap:clamp(14px,3vw,36px);padding:clamp(20px,2.6vw,30px) 4px;border-bottom:var(--bw) solid var(--line);transition:padding-left .35s,background .35s;cursor:pointer;width:100%;text-align:left;background:none;border-top:none;border-left:none;border-right:none;color:inherit;font-family:inherit}
+  .srv:hover{padding-left:16px;background:rgba(236,234,227,0.03)}
+  .srv .no{font-family:'Space Mono',monospace;font-size:12px;color:var(--faint)}
+  .srv .name{font-weight:800;font-size:clamp(18px,2.4vw,26px);text-transform:uppercase;letter-spacing:0.01em;line-height:1.1}
+  .srv .desc{font-family:'Space Mono',monospace;font-size:11.5px;color:var(--faint);margin-top:7px}
+  .srv .dur{font-family:'Space Mono',monospace;font-size:11px;letter-spacing:0.1em;text-transform:uppercase;color:var(--mut);white-space:nowrap}
+  .srv .price{font-family:var(--display);font-size:clamp(26px,3.4vw,40px);white-space:nowrap;text-align:right;background:var(--chrome);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+  .tags-head{font-family:'Space Mono',monospace;font-size:11px;letter-spacing:0.12em;text-transform:uppercase;color:var(--faint);margin-bottom:18px}
+  .tags{display:flex;flex-wrap:wrap;gap:0;border-left:var(--bw) solid var(--line);border-top:var(--bw) solid var(--line)}
+  .tags span{padding:14px 22px;border-right:var(--bw) solid var(--line);border-bottom:var(--bw) solid var(--line);font-family:'Space Mono',monospace;font-size:12px;letter-spacing:0.08em;text-transform:uppercase;color:#c4c2ba;transition:all .3s}
+  .tags span:hover{background:var(--ink);color:#0d0d0d}
+
+  /* ============================ GALERIE ============================ */
+  #galerie h2{font-size:clamp(44px,7vw,92px);margin-bottom:clamp(36px,5vw,56px)}
+  .gallery{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:0;border-top:var(--bw) solid var(--line);border-left:var(--bw) solid var(--line)}
+  .gcell{position:relative;aspect-ratio:4/5;border-right:var(--bw) solid var(--line);border-bottom:var(--bw) solid var(--line);overflow:hidden;cursor:pointer;background:linear-gradient(150deg,#1a1a1a,#0a0a0a)}
+  .gcell img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block;transition:transform .5s cubic-bezier(.2,.7,.2,1),filter .4s}
+  .gcell:hover img{transform:scale(1.05);filter:brightness(1.08)}
+  .gcell::after{content:"";position:absolute;inset:0;background:radial-gradient(120% 80% at 50% 120%,rgba(0,0,0,0.35),transparent 60%);opacity:0;transition:opacity .3s;pointer-events:none}
+  .gcell:hover::after{opacity:1}
+  @media(max-width:560px){.gallery{grid-template-columns:repeat(2,1fr)}}
+  .gmore{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(10,10,10,0.55);color:#eceae3;font-family:'Space Mono',monospace;font-size:clamp(14px,2vw,19px);letter-spacing:0.08em;text-transform:uppercase;z-index:3;transition:background .3s;-webkit-backdrop-filter:blur(2px);backdrop-filter:blur(2px)}
+  .gcell:hover .gmore{background:rgba(10,10,10,0.42)}
+
+  /* ---- Visionneuse plein écran (lightbox) ---- */
+  .lb{position:fixed;inset:0;z-index:300;display:flex;align-items:center;justify-content:center;background:rgba(8,8,8,0.94);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);opacity:0;visibility:hidden;transition:opacity .3s}
+  .lb.open{opacity:1;visibility:visible}
+  .lb img{max-width:92vw;max-height:86vh;object-fit:contain;border:var(--bw) solid var(--line);box-shadow:0 24px 60px rgba(0,0,0,0.6);transform:scale(.97);transition:transform .3s}
+  .lb.open img{transform:scale(1)}
+  .lb-btn{position:absolute;background:rgba(20,20,20,0.6);border:var(--bw) solid var(--line);color:var(--ink);cursor:pointer;display:flex;align-items:center;justify-content:center;font-family:'Space Mono',monospace;transition:all .25s;-webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px)}
+  .lb-btn:hover{background:var(--ink);color:#0d0d0d}
+  .lb-close{top:18px;right:18px;width:46px;height:46px;font-size:22px;line-height:1}
+  .lb-nav{top:50%;transform:translateY(-50%);width:52px;height:64px;font-size:26px}
+  .lb-prev{left:18px}
+  .lb-next{right:18px}
+  .lb-count{position:absolute;bottom:22px;left:50%;transform:translateX(-50%);font-family:'Space Mono',monospace;font-size:12px;letter-spacing:0.18em;color:var(--mut)}
+  @media(max-width:640px){.lb-nav{width:42px;height:54px;font-size:22px}.lb-prev{left:8px}.lb-next{right:8px}}
+
+  /* ============================ RÉSERVATION ============================ */
+  #reserver{background:var(--panel);border-top:var(--bw) solid var(--line)}
+  #reserver .wrap{max-width:1000px}
+  #reserver h2{font-size:clamp(44px,7vw,92px);margin-bottom:clamp(30px,5vw,46px)}
+  .res-intro{font-family:'Space Mono',monospace;font-size:13px;line-height:1.7;color:var(--mut);max-width:460px;margin-bottom:clamp(34px,5vw,48px)}
+  .res-card{background:var(--bg);border:calc(var(--bw) + 1px) solid var(--ink);border-radius:var(--radius);padding:clamp(20px,3.5vw,40px)}
+  .res-lab{font-family:'Space Mono',monospace;font-size:11px;letter-spacing:0.12em;text-transform:uppercase;color:var(--faint);margin-bottom:14px}
+  .cal{margin-bottom:30px;border-top:var(--bw) solid var(--line);border-left:var(--bw) solid var(--line)}
+  .cal-head{display:flex;align-items:stretch;justify-content:space-between;border-bottom:var(--bw) solid var(--line)}
+  .cal-head .mlabel{display:flex;align-items:center;padding:0 18px;font-family:var(--display);font-size:clamp(19px,3vw,28px);text-transform:uppercase;letter-spacing:0.02em}
+  .cal-nav{display:flex}
+  .cal-nav button{background:none;border:none;border-left:var(--bw) solid var(--line);color:var(--ink);width:48px;font-family:'Space Mono',monospace;font-size:16px;cursor:pointer;transition:all .25s}
+  .cal-nav button:hover:not(:disabled){background:var(--ink);color:#0d0d0d}
+  .cal-nav button:disabled{color:#33332f;cursor:not-allowed}
+  .cal-dows{display:grid;grid-template-columns:repeat(7,1fr);border-bottom:var(--bw) solid var(--line)}
+  .cal-dows span{padding:9px 0;text-align:center;font-family:'Space Mono',monospace;font-size:10px;letter-spacing:0.08em;text-transform:uppercase;color:var(--faint)}
+  .cal-grid{display:grid;grid-template-columns:repeat(7,1fr)}
+  .cal-cell{min-height:clamp(44px,7vw,60px);display:flex;align-items:center;justify-content:center;border-right:var(--bw) solid var(--line);border-bottom:var(--bw) solid var(--line);font-family:'Space Mono',monospace;font-size:14px;background:transparent;color:var(--ink);cursor:pointer;transition:all .2s;position:relative}
+  .cal-cell:hover:not(.off):not(.blank):not(.sel){background:rgba(236,234,227,0.05)}
+  .cal-cell.sel{background:var(--chrome);color:#0d0d0d;font-weight:700}
+  .cal-cell.off{color:#3a3a36;cursor:not-allowed}
+  .cal-cell.blank{cursor:default;background:rgba(0,0,0,0.18)}
+  .cal-cell.today:not(.sel)::after{content:'';position:absolute;bottom:8px;left:50%;transform:translateX(-50%);width:4px;height:4px;border-radius:50%;background:var(--solid)}
+  .slots{display:grid;grid-template-columns:repeat(auto-fill,minmax(92px,1fr));gap:0;border-top:var(--bw) solid var(--line);border-left:var(--bw) solid var(--line);margin-bottom:26px}
+  .slot{padding:15px 0;border-right:var(--bw) solid var(--line);border-bottom:var(--bw) solid var(--line);font-family:'Space Mono',monospace;font-size:13px;letter-spacing:0.03em;text-align:center;transition:all .2s;background:transparent;color:var(--ink);cursor:pointer}
+  .slot.sel{background:var(--chrome);color:#0d0d0d;font-weight:700}
+  .slot.taken{background:var(--panel2);color:#56554f;border-color:#222;cursor:not-allowed;text-decoration:line-through}
+  .legend{display:flex;gap:22px;flex-wrap:wrap;margin-bottom:28px;font-family:'Space Mono',monospace;font-size:10.5px;color:var(--faint)}
+  .legend span{display:flex;align-items:center;gap:8px}
+  .legend i{width:11px;height:11px;display:inline-block;font-style:normal}
+  .presta{border-top:var(--bw) solid var(--line);border-left:var(--bw) solid var(--line);margin-bottom:26px}
+  .presta-row{display:grid;grid-template-columns:auto 1fr auto;gap:14px;align-items:center;width:100%;text-align:left;padding:14px 16px;border-right:var(--bw) solid var(--line);border-bottom:var(--bw) solid var(--line);background:transparent;color:var(--ink);cursor:pointer;transition:all .2s;font-family:inherit}
+  .presta-row:hover:not(.sel){background:rgba(236,234,227,0.05)}
+  .presta-row.sel{background:var(--chrome);color:#0d0d0d}
+  .presta-row .pno{font-family:'Space Mono',monospace;font-size:12px;color:var(--faint)}
+  .presta-row.sel .pno{color:#0d0d0d}
+  .presta-row .pname{font-weight:700;font-size:13.5px;text-transform:uppercase;letter-spacing:0.02em;line-height:1.15}
+  .presta-row .pprice{font-family:'Space Mono',monospace;font-size:13px;white-space:nowrap}
+  .coord{border-top:calc(var(--bw) + 1px) solid var(--ink);padding-top:26px}
+  .coord-sum{font-family:var(--display);font-size:clamp(22px,3vw,30px);text-transform:uppercase;margin-bottom:20px}
+  .inputs{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:0;border-left:var(--bw) solid var(--line);border-top:var(--bw) solid var(--line);margin-bottom:16px}
+  .inputs input{background:var(--panel2);border:none;border-right:var(--bw) solid var(--line);border-bottom:var(--bw) solid var(--line);color:var(--ink);padding:16px;font-family:'Space Mono',monospace;font-size:13px;outline:none}
+  .err{font-family:'Space Mono',monospace;font-size:12px;color:#e0846f;margin-bottom:14px}
+  .submit{width:100%;background:var(--chrome);color:#0d0d0d;border:none;border-radius:var(--radius);padding:18px;font-family:'Space Mono',monospace;font-size:12px;letter-spacing:0.12em;text-transform:uppercase;font-weight:700;cursor:pointer;transition:transform .3s,box-shadow .3s}
+  .submit:hover{transform:translateY(-2px);box-shadow:0 14px 30px rgba(0,0,0,0.5)}
+  .confirmed{text-align:center;padding:clamp(20px,4vw,46px) 0}
+  .confirmed .big{font-family:var(--display);font-size:clamp(40px,7vw,72px);line-height:0.9;text-transform:uppercase;margin-bottom:18px;color:var(--ink)}
+  .confirmed .l1{font-family:'Space Mono',monospace;font-size:14px;color:var(--ink);line-height:1.7;margin-bottom:8px}
+  .confirmed .l2{font-family:'Space Mono',monospace;font-size:12px;color:var(--faint);margin-bottom:30px}
+  .ghost{background:none;border:var(--bw) solid var(--line);border-radius:var(--radius);color:var(--ink);padding:14px 30px;font-family:'Space Mono',monospace;font-size:11px;letter-spacing:0.12em;text-transform:uppercase;cursor:pointer;transition:all .3s}
+  .ghost:hover{background:var(--ink);color:#0d0d0d}
+
+  /* ESPACE BARBER */
+  .barber-toggle{background:none;border:none;color:var(--faint);font-family:'Space Mono',monospace;font-size:11px;letter-spacing:0.12em;text-transform:uppercase;cursor:pointer;transition:color .3s}
+  .barber-toggle:hover{color:var(--ink)}
+  .barber-box{margin-top:14px;background:var(--bg);border:var(--bw) solid var(--line);border-radius:var(--radius);padding:clamp(20px,3vw,32px)}
+  .barber-head{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:14px;margin-bottom:20px;border-bottom:var(--bw) solid var(--line);padding-bottom:18px}
+  .barber-head h3{font-family:var(--display);font-size:24px;text-transform:uppercase;font-weight:400}
+  .barber-head .acts{display:flex;gap:0;border-left:var(--bw) solid var(--line)}
+  .barber-head .acts button{background:none;border:var(--bw) solid var(--line);border-left:none;color:var(--ink);padding:9px 16px;font-family:'Space Mono',monospace;font-size:10px;letter-spacing:0.1em;text-transform:uppercase;cursor:pointer;transition:all .25s}
+  .barber-head .acts button:hover{background:var(--ink);color:#0d0d0d}
+  .blist{border-top:var(--bw) solid var(--line)}
+  .brow{display:grid;grid-template-columns:auto 1fr auto;gap:16px;align-items:center;padding:14px 4px;border-bottom:var(--bw) solid var(--line)}
+  .brow .date{font-family:var(--display);font-size:17px;text-transform:uppercase}
+  .brow .time{font-family:'Space Mono',monospace;font-size:11px;color:var(--mut)}
+  .brow .nm{font-size:14px;font-weight:600}
+  .brow .psv{font-family:'Space Mono',monospace;font-size:11.5px;color:var(--solid);margin-top:2px}
+  .brow .em{font-family:'Space Mono',monospace;font-size:11.5px;color:var(--faint);overflow:hidden;text-overflow:ellipsis}
+  .brow button{background:none;border:var(--bw) solid var(--line);color:var(--mut);padding:8px 13px;font-family:'Space Mono',monospace;font-size:10px;letter-spacing:0.08em;text-transform:uppercase;cursor:pointer;transition:all .25s}
+  .brow button:hover{border-color:#e0846f;color:#e0846f}
+  .empty{padding:30px 0;text-align:center;font-family:'Space Mono',monospace;color:var(--faint);font-size:13px}
+  /* ---- planning de journée (espace barber) ---- */
+  .bday{display:flex;align-items:stretch;border:var(--bw) solid var(--line);margin-bottom:10px}
+  .bday .lbl{flex:1;display:flex;align-items:center;justify-content:center;font-family:var(--display);font-size:clamp(16px,3vw,22px);text-transform:uppercase;letter-spacing:0.02em;padding:10px 6px}
+  .bday button{background:none;border:none;color:var(--ink);width:48px;font-family:'Space Mono',monospace;font-size:17px;cursor:pointer;transition:all .2s}
+  .bday button:first-child{border-right:var(--bw) solid var(--line)}
+  .bday button:last-child{border-left:var(--bw) solid var(--line)}
+  .bday button:hover{background:var(--ink);color:#0d0d0d}
+  .bsub{font-family:'Space Mono',monospace;font-size:11px;letter-spacing:0.08em;text-transform:uppercase;color:var(--faint);margin-bottom:14px}
+  .agenda{border-top:var(--bw) solid var(--line)}
+  .aslot{display:grid;grid-template-columns:50px 5px 1fr auto;align-items:center;gap:12px;padding:11px 4px;border-bottom:var(--bw) solid var(--line)}
+  .aslot .t{font-family:'Space Mono',monospace;font-size:13px;color:var(--mut)}
+  .aslot .bar{align-self:stretch;min-height:30px;border-radius:2px;background:transparent}
+  .aslot .info{min-width:0}
+  .aslot .sv{font-size:14px;font-weight:700;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .aslot .nm{font-family:'Space Mono',monospace;font-size:11.5px;color:var(--ink);margin-top:3px}
+  .aslot.is-free .sv{color:var(--faint);font-weight:400}
+  .aslot.is-free{opacity:.78}
+  .aslot button{background:none;border:var(--bw) solid var(--line);color:var(--mut);padding:7px 12px;font-family:'Space Mono',monospace;font-size:10px;letter-spacing:0.08em;text-transform:uppercase;cursor:pointer;transition:all .25s;white-space:nowrap}
+  .aslot button:hover{border-color:var(--ink);color:var(--ink)}
+  .aslot:not(.is-free):not(.is-blocked) button:hover{border-color:#e0846f;color:#e0846f}
+  .blegend{display:flex;flex-wrap:wrap;gap:10px 16px;margin-top:18px;padding-top:16px;border-top:var(--bw) solid var(--line);font-family:'Space Mono',monospace;font-size:10.5px;color:var(--mut)}
+  .blegend span{display:flex;align-items:center;gap:7px}
+  .blegend i{width:11px;height:11px;border-radius:2px;display:inline-block}
+  .login{max-width:340px;margin:0 auto;text-align:center;padding:8px 0}
+  .login .lab{font-family:'Space Mono',monospace;font-size:11px;letter-spacing:0.12em;text-transform:uppercase;color:var(--faint);margin-bottom:16px}
+  .login input{width:100%;background:var(--panel2);border:var(--bw) solid var(--line);border-radius:var(--radius);color:var(--ink);padding:14px 16px;font-family:'Space Mono',monospace;font-size:13px;outline:none;text-align:center;letter-spacing:0.1em;margin-bottom:12px}
+  .login button{width:100%;background:var(--ink);color:#0d0d0d;border:none;border-radius:var(--radius);padding:15px;font-family:'Space Mono',monospace;font-size:11px;letter-spacing:0.12em;text-transform:uppercase;font-weight:700;cursor:pointer}
+
+  /* ============================ LOCALISATION ============================ */
+  #contact{position:relative;border-top:var(--bw) solid var(--line)}
+  .loc{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr))}
+  .loc-info{padding:clamp(56px,8vw,110px) clamp(20px,4vw,56px)}
+  .loc-info h2{font-size:clamp(40px,6vw,72px);line-height:0.84;margin-bottom:30px}
+  .loc-info .a1{font-size:17px;line-height:1.7;margin-bottom:6px}
+  .loc-info .a2{font-size:17px;line-height:1.7;color:var(--mut);margin-bottom:34px}
+  .hours{border-top:calc(var(--bw) + 1px) solid var(--ink);max-width:330px}
+  .hours div{display:flex;justify-content:space-between;font-family:'Space Mono',monospace;font-size:13px;color:var(--mut);padding:11px 0;border-bottom:var(--bw) solid var(--line)}
+  .hours div:last-child{border-bottom:none}
+  .hours div span:last-child{color:var(--ink)}
+  .loc-map{min-height:400px;position:relative;border-left:var(--bw) solid var(--line);filter:grayscale(1) contrast(1.1) brightness(0.8)}
+  .loc-map iframe{position:absolute;inset:0;width:100%;height:100%;border:0}
+
+  /* ============================ FOOTER ============================ */
+  footer{border-top:calc(var(--bw) + 1px) solid var(--ink);padding:clamp(44px,6vw,72px) clamp(20px,4vw,40px) 36px}
+  .foot-top{display:flex;flex-wrap:wrap;gap:40px;justify-content:space-between;align-items:flex-start}
+  .foot-brand{max-width:320px}
+  .foot-brand .row{display:flex;align-items:center;gap:11px;margin-bottom:18px}
+  .foot-brand img{width:54px;height:54px;object-fit:contain;mix-blend-mode:screen}
+  .foot-brand .nm{font-weight:900;font-size:18px;letter-spacing:0.04em;text-transform:uppercase}
+  .foot-brand p{font-family:'Space Mono',monospace;font-size:12.5px;line-height:1.7;color:var(--faint)}
+  .foot-col h4{font-family:'Space Mono',monospace;font-size:10.5px;letter-spacing:0.12em;text-transform:uppercase;color:var(--faint);margin-bottom:16px;font-weight:400}
+  .foot-col .links{display:flex;flex-direction:column;gap:11px}
+  .foot-col .links a{font-size:14px;color:#c4c2ba;text-decoration:none;transition:color .3s}
+  .foot-col .links a:hover{color:#fff}
+  .foot-hours{font-family:'Space Mono',monospace;font-size:13px;color:#c4c2ba;line-height:1.9}
+  .foot-bot{max-width:1240px;margin:44px auto 0;padding-top:22px;border-top:var(--bw) solid var(--line);display:flex;flex-wrap:wrap;gap:14px 18px;align-items:center;justify-content:space-between;font-family:'Space Mono',monospace;font-size:11px;color:var(--faint)}
+  .foot-social{display:flex;gap:12px;align-items:center}
+  .foot-social a{width:40px;height:40px;display:flex;align-items:center;justify-content:center;border:var(--bw) solid var(--line);border-radius:var(--radius);color:var(--ink);transition:all .25s}
+  .foot-social a:hover{background:var(--ink);color:#0d0d0d;transform:translateY(-2px)}
+  .foot-social svg{width:21px;height:21px;display:block}
+</style>
+</head>
+<body>
+
+<div class="grain"></div>
+
+<!-- ============================ NAV ============================ -->
+<nav>
+  <a class="brand" href="#top">
+    <img src="assets/logo-fondu.png" alt="">
+    <span>Blade Society</span>
+  </a>
+  <div class="navlinks">
+    <a class="hide-sm" href="#apropos">À propos</a>
+    <a class="hide-sm" href="#services">Services</a>
+    <a class="hide-sm" href="#galerie">Galerie</a>
+    <a class="cta" href="#reserver">Réserver →</a>
+  </div>
+</nav>
+
+<!-- ============================ HERO ============================ -->
+<header id="top">
+  <div class="hero-bg"></div>
+  <div class="hero-grid"></div>
+  <div class="hero-glow"></div>
+  <div class="hero-fade"></div>
+
+  <div class="hero-meta">
+    <span>BARBIER PRIVÉ / SUR RENDEZ-VOUS</span>
+    <span class="hide-sm">44 AVENUE PAUL KRUGER, VILLEURBANNE</span>
+  </div>
+
+  <div class="hero-title-wrap">
+    <h1 class="hero-title" id="heroTitle" aria-label="Architecte capillaire">Architecte<br>capillaire</h1>
+    <div id="logo3d"></div>
+  </div>
+
+  <div class="hero-foot">
+    <p>Travail au ciseau, dégradés millimétrés, rasage traditionnel. Une coupe construite comme une structure — une séance, un client, une signature.</p>
+    <div class="hero-actions">
+      <a class="link-mono" href="#galerie">↓ La galerie</a>
+      <a class="btn-chrome" href="#reserver">Prendre rendez-vous →</a>
+    </div>
+  </div>
+</header>
+
+<!-- ============================ À PROPOS ============================ -->
+<section id="apropos" class="sect about">
+  <div class="reveal wrap" data-reveal>
+    <div class="eyebrow">L'ARTISAN</div>
+    <div class="about-grid">
+      <div>
+        <div class="about-photo"><img src="assets/giovany.jpg" alt="Giovany — barbier, Blade Society" loading="lazy"></div>
+      </div>
+      <div>
+        <h2 class="head">Giovany</h2>
+        <p>Je ne coupe pas seulement des cheveux : je dessine des lignes. Avant le premier coup de ciseau, je lis chaque tête comme une matière — sa densité, son implantation, son mouvement. Pas de chaîne, pas de précipitation : juste toi, le fauteuil, et le travail bien fait.</p>
+        <p>Blade Society, c'est mon atelier privé, sur rendez-vous, pensé pour qu'on s'y sente tout de suite à l'aise. J'aime prendre le temps d'écouter, d'échanger, de comprendre ce que tu veux vraiment. On discute, on rigole, et tu repars avec une coupe nette et le sentiment d'avoir été bien reçu.</p>
+        <div class="stats">
+          <div><div class="num">01</div><div class="lab">Fauteuil</div></div>
+          <div><div class="num">45'</div><div class="lab">Par séance</div></div>
+          <div><a href="#reserver" style="display:block;color:inherit;text-decoration:none"><div class="num">RDV</div><div class="lab">Ci-dessous ↓</div></a></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================ SERVICES ============================ -->
+<section id="services" class="sect">
+  <div class="reveal wrap" data-reveal>
+    <div class="eyebrow split"><span>SERVICES &amp; TARIFS</span><span class="hide-sm">SÉANCES DE 45 MIN</span></div>
+    <h2 class="head">La carte</h2>
+    <div class="menu" id="menu"></div>
+    <div style="margin-top:16px;font-family:'Space Mono',monospace;font-size:11px;color:var(--faint)">// Cliquez une prestation pour la réserver →</div>
+    <div style="margin-top:clamp(40px,6vw,60px)">
+      <div class="tags-head">// Coupes signature &amp; expertises</div>
+      <div class="tags" id="tags"></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================ GALERIE ============================ -->
+<section id="galerie" class="sect">
+  <div class="reveal wrap" data-reveal>
+    <div class="eyebrow split"><span>PORTFOLIO</span><span>@BLADE__SOCIETY</span></div>
+    <h2 class="head">Le travail</h2>
+    <div class="gallery" id="gallery"></div>
+  </div>
+</section>
+
+<!-- ============================ RÉSERVATION ============================ -->
+<section id="reserver" class="sect">
+  <div class="reveal wrap" data-reveal>
+    <div class="eyebrow">RÉSERVATION</div>
+    <h2 class="head">Réservez</h2>
+    <div class="res-card" id="resCard"></div>
+
+    <div style="margin-top:22px">
+      <button class="barber-toggle" id="barberToggle">// Espace barber</button>
+    </div>
+    <div id="barberPane"></div>
+  </div>
+</section>
+
+<!-- ============================ LOCALISATION ============================ -->
+<section id="contact">
+  <div class="loc">
+    <div class="reveal loc-info" data-reveal>
+      <div class="eyebrow" style="margin-bottom:36px">L'ATELIER</div>
+      <h2 class="head">Nous trouver</h2>
+      <div class="a1">44 Avenue Paul Kruger</div>
+      <div class="a2">69100 Villeurbanne, France</div>
+      <div class="hours">
+        <div><span>LUN — SAM</span><span>10h – 20h</span></div>
+        <div><span>PAUSE</span><span>13h – 14h</span></div>
+        <div><span>DIMANCHE</span><span style="color:var(--faint)">Fermé</span></div>
+      </div>
+      <a class="btn-chrome" href="#reserver" style="margin-top:34px;font-family:'Space Mono',monospace;font-size:12px;letter-spacing:0.12em;padding:16px 36px">Réserver →</a>
+    </div>
+    <div class="loc-map">
+      <iframe title="Carte" loading="lazy" src="https://www.google.com/maps?q=44%20Avenue%20Paul%20Kruger%2069100%20Villeurbanne&output=embed"></iframe>
+    </div>
+  </div>
+</section>
+
+<!-- ============================ FOOTER ============================ -->
+<footer>
+  <div class="foot-top">
+    <div class="foot-brand">
+      <div class="row">
+        <img src="assets/logo-fondu.png" alt="">
+        <span class="nm">Blade Society</span>
+      </div>
+      <p>Barbershop privé sur rendez-vous. L'art du sur-mesure capillaire.</p>
+    </div>
+    <div class="foot-col">
+      <h4>// Suivre</h4>
+      <div class="links">
+        <a href="https://www.instagram.com/blade__society/" target="_blank" rel="noopener">Instagram · @blade__society</a>
+        <a href="https://www.snapchat.com/add/giiovany.cx" target="_blank" rel="noopener">Snapchat · giiovany.cx</a>
+      </div>
+    </div>
+    <div class="foot-col">
+      <h4>// Horaires</h4>
+      <div class="foot-hours">Lun – Sam · 10h – 20h<br>Pause 13h – 14h<br>Dimanche fermé</div>
+    </div>
+  </div>
+  <div class="foot-bot">
+    <div class="foot-social">
+      <a href="https://www.instagram.com/blade__society/" target="_blank" rel="noopener" aria-label="Instagram — @blade__society">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/></svg>
+      </a>
+      <a href="https://www.snapchat.com/add/giiovany.cx" target="_blank" rel="noopener" aria-label="Snapchat — giiovany.cx">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12.206.793c.99 0 4.347.276 5.93 3.821.529 1.193.403 3.219.299 4.847l-.003.06c-.012.18-.022.345-.03.51.075.045.203.09.401.09.3-.016.659-.12 1.033-.301.165-.088.344-.104.464-.104.182 0 .359.029.509.09.45.149.734.479.734.838.015.449-.42.838-1.291 1.181-.09.029-.213.075-.345.119-.45.149-1.126.374-1.31.81-.09.224-.061.524.12.868l.015.015c.06.136 1.526 3.475 4.791 4.014.255.044.435.27.42.509 0 .075-.015.149-.045.225-.24.569-1.273.988-3.146 1.271-.059.091-.12.375-.164.57-.029.179-.074.36-.134.553-.076.271-.27.405-.555.405h-.03c-.135 0-.313-.031-.538-.074-.36-.075-.765-.135-1.273-.135-.3 0-.599.015-.913.074-.6.104-1.123.464-1.723.884-.853.599-1.826 1.288-3.294 1.288-.06 0-.119-.015-.18-.015-.06 0-.119.015-.18.015-1.468 0-2.427-.689-3.279-1.288-.599-.42-1.107-.78-1.707-.884-.314-.045-.629-.074-.928-.074-.54 0-.958.089-1.272.149-.211.043-.391.074-.54.074-.374 0-.523-.224-.583-.42-.061-.192-.09-.389-.135-.567-.046-.181-.105-.494-.166-.57-1.918-.222-2.95-.642-3.189-1.226-.031-.063-.052-.15-.055-.225-.015-.243.165-.465.42-.509 3.264-.54 4.73-3.879 4.791-4.02l.016-.029c.18-.345.224-.645.119-.869-.184-.434-.86-.658-1.309-.809-.121-.029-.24-.074-.346-.119-1.157-.464-1.307-.928-1.236-1.246.09-.435.6-.72 1.057-.72.146 0 .27.029.39.075.405.194.766.299 1.097.299.255 0 .435-.06.524-.105l-.029-.51c-.105-1.628-.225-3.654.298-4.847C7.795 1.069 11.151.793 12.141.793h.065z"/></svg>
+      </a>
+    </div>
+    <span>© 2026 BLADE SOCIETY — TOUS DROITS RÉSERVÉS</span>
+    <span>44 AV. PAUL KRUGER, 69100 VILLEURBANNE</span>
+  </div>
+</footer>
+
+<!-- ============================ VISIONNEUSE ============================ -->
+<div class="lb" id="lightbox" role="dialog" aria-modal="true" aria-label="Visionneuse photo">
+  <button class="lb-btn lb-close" id="lbClose" aria-label="Fermer">✕</button>
+  <button class="lb-btn lb-nav lb-prev" id="lbPrev" aria-label="Précédente">‹</button>
+  <img id="lbImg" src="" alt="">
+  <button class="lb-btn lb-nav lb-next" id="lbNext" aria-label="Suivante">›</button>
+  <div class="lb-count" id="lbCount"></div>
+</div>
+
+<script>
+/* ============================================================
+   BLADE SOCIETY — CONFIGURATION (à remplir par Giovany)
+   ============================================================ */
+const CFG = {
+  // ---- NOTIFICATION TELEGRAM (privée, gratuite, instantanée) ----
+  // 1. Créer un bot via @BotFather -> récupérer le token.
+  // 2. Écrire un message au bot, ouvrir @userinfobot -> récupérer le chat_id.
+  TELEGRAM_BOT_TOKEN: '',   // ex: '7123456789:AAH9xQ...'
+  TELEGRAM_CHAT_ID:   '',   // ex: '123456789'
+
+  // ---- STOCKAGE PARTAGÉ TEMPS RÉEL (recommandé) ----
+  // URL d'une Firebase Realtime Database (gratuit). Sans cela, les
+  // réservations sont mémorisées localement sur chaque appareil.
+  FIREBASE_DB_URL: 'https://blade-society-default-rtdb.europe-west1.firebasedatabase.app',
+
+  // ---- EMAILJS (envoi de mails gratuit, ~200/mois) ----
+  // 1. Compte sur emailjs.com -> connecter un service email (Gmail...).
+  // 2. Récupérer la "Public Key" et le "Service ID".
+  // 3. Créer 2 templates : un POUR LE CLIENT (To = {{to_email}}),
+  //    un (optionnel) pour le barber. Coller les IDs ci-dessous.
+  EMAILJS_PUBLIC_KEY:      '',
+  EMAILJS_SERVICE_ID:      '',
+  EMAILJS_TEMPLATE_CLIENT: '',   // mail de confirmation envoyé AU CLIENT
+  EMAILJS_TEMPLATE_ID:     '',   // (optionnel) mail envoyé au barber
+
+  // ---- ESPACE BARBER ----
+  BARBER_PASSWORD: 'GiovanyBlade',
+};
+
+/* ============================================================
+   DONNÉES STATIQUES
+   ============================================================ */
+const SHOW_PRICES = true;
+const LS_KEY = 'bladesociety_slots_v2';
+const TIMES  = ['10:00','11:00','12:00','14:00','15:00','16:00','17:00','18:00','19:00'];
+const DOW    = ['Dim','Lun','Mar','Mer','Jeu','Ven','Sam'];
+const MON    = ['janv.','févr.','mars','avr.','mai','juin','juil.','août','sept.','oct.','nov.','déc.'];
+const MONF   = ['janvier','février','mars','avril','mai','juin','juillet','août','septembre','octobre','novembre','décembre'];
+const pad    = (n) => String(n).padStart(2,'0');
+const isoOf  = (d) => d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());
+const esc    = (s) => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+const SERVICES = [
+  { no:'01', name:'Coupe simple',                desc:'Travail au ciseau, finitions nettes',     duration:'45 min', price:'20€' },
+  { no:'02', name:'Coupe + Bouc',                desc:'Coupe + entretien du bouc',               duration:'45 min', price:'23€' },
+  { no:'03', name:'Barbe simple',                desc:'Taille & contours à la demande',          duration:'45 min', price:'14€' },
+  { no:'04', name:'Coupe + Barbe — traçage',     desc:'Coupe + barbe, lignes tracées',           duration:'45 min', price:'25€' },
+  { no:'05', name:'Coupe + Barbe complète',      desc:'Le rituel complet, rasage traditionnel',  duration:'45 min', price:'28€' },
+];
+// une couleur par prestation (planning barber)
+const SERVICE_COLORS = { '01':'#6aa3e0', '02':'#5fcf8a', '03':'#e0b15f', '04':'#b48fe0', '05':'#e0808f' };
+const BLOCK_COLOR = '#6f6e66';
+const TAGS = ['Travail au ciseau','Dégradés','Rasage traditionnel','Mullet','Burst fade','Taper fade'];
+// Galerie : tes photos dans assets/gallery/ (01.jpg … 17.jpg, dans l'ordre où tu les as fournies)
+const GALLERY_COUNT = 15;
+const GALLERY = Array.from({ length: GALLERY_COUNT }, (_, i) => ({
+  src: `assets/gallery/${String(i + 1).padStart(2, '0')}.jpg`,
+}));
+
+/* ============================================================
+   RENDU STATIQUE : services, tags, galerie
+   ============================================================ */
+document.getElementById('menu').innerHTML = SERVICES.map(s => `
+  <button class="srv" data-book="${esc(s.no)}" aria-label="Réserver : ${esc(s.name)}">
+    <span class="no">${esc(s.no)}</span>
+    <div style="min-width:0">
+      <div class="name">${esc(s.name)}</div>
+      <div class="desc">${esc(s.desc)}</div>
+    </div>
+    <span class="dur">${esc(s.duration)}</span>
+    <span class="price">${SHOW_PRICES ? esc(s.price) : 'Sur RDV'}</span>
+  </button>`).join('');
+
+document.getElementById('tags').innerHTML = TAGS.map(t => `<span>${esc(t)}</span>`).join('');
+
+/* ---- titre du hero : loupe discrète qui grossit les lettres sous la souris ---- */
+(() => {
+  const title = document.getElementById('heroTitle');
+  const lines = ['Architecte','capillaire'];
+  title.innerHTML = lines.map(word =>
+    word.split('').map(ch => `<span class="ltr">${esc(ch)}</span>`).join('')
+  ).join('<br>');
+
+  const letters = Array.from(title.querySelectorAll('.ltr'));
+  const RADIUS = 85;     // rayon d'influence en px
+  const BOOST  = 0.18;   // agrandissement max (discret)
+
+  const apply = (mx, my) => {
+    for (const el of letters){
+      const r = el.getBoundingClientRect();
+      const cx = r.left + r.width / 2;
+      const cy = r.top + r.height / 2;
+      const d = Math.hypot(mx - cx, my - cy);
+      const f = Math.max(0, 1 - d / RADIUS);          // 1 au centre -> 0 au bord
+      el.style.transform = f ? `scale(${(1 + BOOST * f * f).toFixed(3)})` : '';
+    }
+  };
+  const reset = () => letters.forEach(el => { el.style.transform = ''; });
+
+  title.addEventListener('pointermove', (e) => apply(e.clientX, e.clientY), { passive:true });
+  title.addEventListener('pointerleave', reset);
+})();
+
+// On n'affiche que les 6 premières vignettes ; les autres restent accessibles
+// dans la visionneuse (clic sur une vignette puis flèches / défilement).
+const GALLERY_VISIBLE = 6;
+const galleryExtra = Math.max(0, GALLERY.length - GALLERY_VISIBLE);
+document.getElementById('gallery').innerHTML = GALLERY.slice(0, GALLERY_VISIBLE).map((g, i) => `
+  <div class="gcell" data-idx="${i}">
+    <img src="${g.src}" alt="Réalisation Blade Society n°${i + 1}" loading="lazy" onerror="this.style.display='none'">
+    ${(i === GALLERY_VISIBLE - 1 && galleryExtra > 0) ? `<div class="gmore">+${galleryExtra} photos</div>` : ''}
+  </div>`).join('');
+
+/* ---- visionneuse plein écran ---- */
+(() => {
+  const lb = document.getElementById('lightbox');
+  const lbImg = document.getElementById('lbImg');
+  const lbCount = document.getElementById('lbCount');
+  let cur = 0;
+
+  const show = (i) => {
+    cur = (i + GALLERY.length) % GALLERY.length;
+    lbImg.src = GALLERY[cur].src;
+    lbImg.alt = 'Réalisation Blade Society n°' + (cur + 1);
+    lbCount.textContent = (cur + 1) + ' / ' + GALLERY.length;
+  };
+  const open = (i) => { show(i); lb.classList.add('open'); document.body.style.overflow = 'hidden'; };
+  const close = () => { lb.classList.remove('open'); document.body.style.overflow = ''; };
+
+  document.getElementById('gallery').addEventListener('click', (e) => {
+    const cell = e.target.closest('.gcell'); if (!cell) return;
+    const img = cell.querySelector('img');
+    if (img && img.style.display === 'none') return;   // pas d'image chargée -> on ignore
+    open(Number(cell.dataset.idx));
+  });
+  document.getElementById('lbClose').addEventListener('click', close);
+  document.getElementById('lbPrev').addEventListener('click', (e) => { e.stopPropagation(); show(cur - 1); });
+  document.getElementById('lbNext').addEventListener('click', (e) => { e.stopPropagation(); show(cur + 1); });
+  lb.addEventListener('click', (e) => { if (e.target === lb) close(); });   // clic sur le fond
+  document.addEventListener('keydown', (e) => {
+    if (!lb.classList.contains('open')) return;
+    if (e.key === 'Escape') close();
+    else if (e.key === 'ArrowLeft') show(cur - 1);
+    else if (e.key === 'ArrowRight') show(cur + 1);
+  });
+})();
+
+/* ============================================================
+   APP DE RÉSERVATION
+   ============================================================ */
+const App = {
+  state: {
+    selectedDate:'', selectedSlot:null, selectedService:null,
+    viewY:0, viewM:0,
+    name:'', phone:'', email:'', error:'', submitting:false,
+    bookings:{}, confirmed:null,
+    barberOpen:false, barberPw:'', barberAuthed:false, barberError:'', barberDay:'',
+  },
+  MONTHS_AHEAD: 12,   // nombre de mois consultables vers l'avenir
+
+  set(patch){ Object.assign(this.state, patch); this.render(); },
+
+  /* ---------------- stockage ----------------
+     CONFIDENTIALITÉ : on ne stocke dans Firebase QUE le créneau pris
+     + la prestation (pas de nom ni d'email). Les coordonnées du client
+     partent uniquement dans la notification privée du barber (Telegram/email). */
+  base(){ return CFG.FIREBASE_DB_URL.replace(/\/$/, ''); },
+  local(){ try { return JSON.parse(localStorage.getItem(LS_KEY) || '{}'); } catch(e){ return {}; } },
+  async fetchStore(){
+    if (CFG.FIREBASE_DB_URL){
+      try {
+        const r = await fetch(this.base() + '/slots.json');
+        const d = await r.json();
+        if (d && typeof d === 'object'){ localStorage.setItem(LS_KEY, JSON.stringify(d)); return d; }
+        return {};
+      } catch(e){}
+    }
+    return this.local();
+  },
+  async putStore(key, slot){
+    if (CFG.FIREBASE_DB_URL){
+      try { await fetch(this.base() + '/slots/' + encodeURIComponent(key) + '.json',
+        { method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify(slot) }); } catch(e){}
+    }
+    const all = this.local(); all[key] = slot; localStorage.setItem(LS_KEY, JSON.stringify(all));
+  },
+  async delStore(key){
+    if (CFG.FIREBASE_DB_URL){
+      try { await fetch(this.base() + '/slots/' + encodeURIComponent(key) + '.json', { method:'DELETE' }); } catch(e){}
+    }
+    const all = this.local(); delete all[key]; localStorage.setItem(LS_KEY, JSON.stringify(all));
+  },
+  async refresh(){ const bookings = await this.fetchStore(); this.set({ bookings }); },
+
+  /* ---------------- notifications ---------------- */
+  prettyDate(iso){
+    const [y,m,d] = iso.split('-').map(Number);
+    const dt = new Date(y, m-1, d);
+    return DOW[dt.getDay()]+' '+d+' '+MONF[m-1]+' '+y;
+  },
+  async notify(b){
+    const msg = '🔔 Nouvelle réservation — Blade Society\n'
+      + 'Client : ' + b.name + '\n'
+      + 'Téléphone : ' + (b.phone || '—') + '\n'
+      + 'Email : ' + b.email + '\n'
+      + 'Prestation : ' + (b.service || '—') + (b.price ? ' (' + b.price + ')' : '') + '\n'
+      + 'Date : ' + this.prettyDate(b.date) + '\n'
+      + 'Créneau : ' + b.time;
+    if (CFG.TELEGRAM_BOT_TOKEN && CFG.TELEGRAM_CHAT_ID){
+      try {
+        const u = 'https://api.telegram.org/bot' + CFG.TELEGRAM_BOT_TOKEN + '/sendMessage'
+          + '?chat_id=' + encodeURIComponent(CFG.TELEGRAM_CHAT_ID)
+          + '&text=' + encodeURIComponent(msg);
+        await fetch(u);
+      } catch(e){}
+    }
+    if (CFG.EMAILJS_PUBLIC_KEY && CFG.EMAILJS_SERVICE_ID && CFG.EMAILJS_TEMPLATE_ID){
+      try {
+        await fetch('https://api.emailjs.com/api/v1.0/email/send', {
+          method:'POST', headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({
+            service_id: CFG.EMAILJS_SERVICE_ID, template_id: CFG.EMAILJS_TEMPLATE_ID,
+            user_id: CFG.EMAILJS_PUBLIC_KEY,
+            template_params: { client_name:b.name, client_phone:b.phone||'', client_email:b.email, service:b.service||'', price:b.price||'', date:this.prettyDate(b.date), slot:b.time, message:msg },
+          }),
+        });
+      } catch(e){}
+    }
+  },
+  // email de CONFIRMATION envoyé AU CLIENT (gratuit via EmailJS)
+  async emailClient(b){
+    if (!(CFG.EMAILJS_PUBLIC_KEY && CFG.EMAILJS_SERVICE_ID && CFG.EMAILJS_TEMPLATE_CLIENT)) return;
+    try {
+      await fetch('https://api.emailjs.com/api/v1.0/email/send', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({
+          service_id: CFG.EMAILJS_SERVICE_ID,
+          template_id: CFG.EMAILJS_TEMPLATE_CLIENT,
+          user_id: CFG.EMAILJS_PUBLIC_KEY,
+          template_params: {
+            to_email: b.email, to_name: b.name, client_name: b.name, client_phone: b.phone || '',
+            service: b.service || '', price: b.price || '',
+            date: this.prettyDate(b.date), slot: b.time,
+            salon: 'Blade Society',
+            adresse: '44 Avenue Paul Kruger, 69100 Villeurbanne',
+          },
+        }),
+      });
+    } catch(e){}
+  },
+
+  /* ---------------- réservation ---------------- */
+  async confirm(){
+    const name = this.state.name.trim();
+    const phone = this.state.phone.trim();
+    const email = this.state.email.trim();
+    const svc = SERVICES.find(x => x.no === this.state.selectedService);
+    if (!svc){ this.set({ error:'Choisissez une prestation.' }); return; }
+    if (name.length < 2){ this.set({ error:'Indiquez votre nom.' }); return; }
+    if (phone.replace(/\D/g,'').length < 9){ this.set({ error:'Indiquez un numéro de téléphone valide.' }); return; }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){ this.set({ error:'Adresse email invalide.' }); return; }
+    if (!this.state.selectedSlot) return;
+    this.set({ submitting:true, error:'' });
+    const key = this.state.selectedDate + '_' + this.state.selectedSlot;
+    const fresh = await this.fetchStore();
+    if (fresh[key]){
+      this.set({ bookings:fresh, submitting:false, selectedSlot:null, error:'Désolé, ce créneau vient d’être réservé. Choisissez-en un autre.' });
+      return;
+    }
+    // stocké (public, partagé) : créneau + prestation + prénom (pour le planning), SANS email
+    const slot = { name, service:svc.name, serviceNo:svc.no, price:svc.price, ts:Date.now() };
+    // envoyé au barber (privé, notification) : coordonnées complètes
+    const full = { name, phone, email, date:this.state.selectedDate, time:this.state.selectedSlot, service:svc.name, price:svc.price };
+    await this.putStore(key, slot);
+    this.notify(full);        // notification au barber (en arrière-plan)
+    this.emailClient(full);   // email de confirmation au client (en arrière-plan)
+    const bookings = Object.assign({}, fresh, { [key]: slot });
+    this.set({ bookings, confirmed:full, submitting:false, selectedSlot:null, selectedService:null, name:'', phone:'', email:'' });
+  },
+  reset(){ this.set({ confirmed:null, selectedSlot:null, error:'' }); },
+
+  /* ---------------- barber ---------------- */
+  barberSubmit(){
+    if (this.state.barberPw === CFG.BARBER_PASSWORD){
+      this.set({ barberAuthed:true, barberError:'', barberPw:'' });
+      this.refresh();
+    } else {
+      this.set({ barberError:'Mot de passe incorrect.' });
+    }
+  },
+  async cancelBooking(key){
+    await this.delStore(key);
+    const bookings = await this.fetchStore();
+    this.set({ bookings });
+  },
+  async blockSlot(key){            // le barber rend un créneau indisponible
+    await this.putStore(key, { name:'', service:'Bloqué', serviceNo:'X', blocked:true, ts:Date.now() });
+    const bookings = await this.fetchStore();
+    this.set({ bookings });
+  },
+
+  /* ---------------- calendrier ---------------- */
+  todayMidnight(){ const t = new Date(); t.setHours(0,0,0,0); return t; },
+  isOpenDay(d){ return d.getDay() !== 0; },                 // fermé le dimanche
+  labelOf(iso){
+    const [y,m,d] = iso.split('-').map(Number);
+    const dt = new Date(y, m-1, d);
+    return DOW[dt.getDay()]+' '+d+' '+MONF[m-1];
+  },
+  monthIndex(y,m){ return y*12 + m; },                       // m: 0-11
+  buildDays(){
+    const t = this.todayMidnight();
+    // premier jour ouvré >= aujourd'hui comme sélection par défaut
+    const cur = new Date(t);
+    while (!this.isOpenDay(cur)) cur.setDate(cur.getDate()+1);
+    this.state.selectedDate = isoOf(cur);
+    this.state.viewY = t.getFullYear();
+    this.state.viewM = t.getMonth();
+    this.state.barberDay = isoOf(t);   // planning barber : démarre sur aujourd'hui
+  },
+  barberShiftDay(delta){
+    const [y,m,d] = this.state.barberDay.split('-').map(Number);
+    const dt = new Date(y, m-1, d); dt.setDate(dt.getDate() + delta);
+    this.set({ barberDay: isoOf(dt) });
+  },
+  shiftMonth(delta){
+    const t = this.todayMidnight();
+    const min = this.monthIndex(t.getFullYear(), t.getMonth());
+    const max = min + this.MONTHS_AHEAD;
+    let idx = this.monthIndex(this.state.viewY, this.state.viewM) + delta;
+    if (idx < min) idx = min;
+    if (idx > max) idx = max;
+    this.set({ viewY: Math.floor(idx/12), viewM: idx % 12 });
+  },
+
+  renderCard(){
+    const s = this.state;
+    if (s.confirmed){
+      return `<div class="confirmed">
+        <div class="big">C'est noté.</div>
+        <p class="l1">${esc((s.confirmed.service ? s.confirmed.service + ' · ' : '') + this.prettyDate(s.confirmed.date) + ' · ' + s.confirmed.time)}</p>
+        <p class="l2">Un rappel a été transmis à Giovany. À très vite chez Blade Society.</p>
+        <button class="ghost" data-act="reset">Réserver un autre créneau</button>
+      </div>`;
+    }
+
+    /* --- calendrier du mois affiché --- */
+    const today = this.todayMidnight();
+    const todayIso = isoOf(today);
+    const curIdx = this.monthIndex(today.getFullYear(), today.getMonth());
+    const viewIdx = this.monthIndex(s.viewY, s.viewM);
+    const prevOff = viewIdx <= curIdx;
+    const nextOff = viewIdx >= curIdx + this.MONTHS_AHEAD;
+    const monthLabel = (MONF[s.viewM].charAt(0).toUpperCase()+MONF[s.viewM].slice(1)) + ' ' + s.viewY;
+
+    const firstDow = (new Date(s.viewY, s.viewM, 1).getDay() + 6) % 7;  // Lundi = 0
+    const nbDays = new Date(s.viewY, s.viewM+1, 0).getDate();
+    const DOWS = ['Lun','Mar','Mer','Jeu','Ven','Sam','Dim'];
+
+    let cells = '';
+    for (let i=0;i<firstDow;i++) cells += `<div class="cal-cell blank"></div>`;
+    for (let day=1; day<=nbDays; day++){
+      const dt = new Date(s.viewY, s.viewM, day);
+      const iso = isoOf(dt);
+      const off = dt < today || !this.isOpenDay(dt);
+      const cls = 'cal-cell'
+        + (off ? ' off' : '')
+        + (iso===s.selectedDate ? ' sel' : '')
+        + (iso===todayIso ? ' today' : '');
+      cells += off
+        ? `<div class="${cls}">${day}</div>`
+        : `<button class="${cls}" data-act="day" data-iso="${iso}">${day}</button>`;
+    }
+
+    const daysHtml = `
+      <div class="cal">
+        <div class="cal-head">
+          <div class="mlabel">${esc(monthLabel)}</div>
+          <div class="cal-nav">
+            <button data-act="prevMonth"${prevOff?' disabled':''} aria-label="Mois précédent">‹</button>
+            <button data-act="nextMonth"${nextOff?' disabled':''} aria-label="Mois suivant">›</button>
+          </div>
+        </div>
+        <div class="cal-dows">${DOWS.map(d=>`<span>${d}</span>`).join('')}</div>
+        <div class="cal-grid">${cells}</div>
+      </div>`;
+
+    const selectedDateLabel = s.selectedDate ? this.labelOf(s.selectedDate) : '';
+
+    const slotsHtml = TIMES.map(t => {
+      const key = s.selectedDate + '_' + t;
+      const taken = !!s.bookings[key];
+      const sel = s.selectedSlot === t;
+      const cls = 'slot' + (taken?' taken':(sel?' sel':''));
+      return `<button class="${cls}" data-act="slot" data-time="${t}"${taken?' disabled':''}>${taken?'Réservé':t}</button>`;
+    }).join('');
+
+    /* --- sélecteur de prestation (toujours visible) --- */
+    const prestaHtml = `<div class="presta">` + SERVICES.map(sv => `
+      <button class="presta-row${sv.no===s.selectedService?' sel':''}" data-act="service" data-no="${esc(sv.no)}">
+        <span class="pno">${esc(sv.no)}</span>
+        <span class="pname">${esc(sv.name)}</span>
+        <span class="pprice">${SHOW_PRICES ? esc(sv.price) : 'Sur RDV'}</span>
+      </button>`).join('') + `</div>`;
+
+    const svc = SERVICES.find(x => x.no === s.selectedService);
+
+    let coordHtml = '';
+    if (s.selectedSlot){
+      const summary = [selectedDateLabel, s.selectedSlot, svc ? svc.name : null].filter(Boolean).join(' · ');
+      coordHtml = `<div class="coord">
+        <div class="res-lab">// Vos coordonnées</div>
+        <div class="coord-sum">${esc(summary)}</div>
+        <div class="inputs">
+          <input data-act="name" value="${esc(s.name)}" placeholder="NOM & PRÉNOM">
+          <input data-act="phone" value="${esc(s.phone)}" placeholder="TÉLÉPHONE" inputmode="tel">
+          <input data-act="email" value="${esc(s.email)}" placeholder="ADRESSE EMAIL" inputmode="email">
+        </div>
+        ${s.error?`<div class="err">! ${esc(s.error)}</div>`:''}
+        <button class="submit" data-act="confirm">${s.submitting?'Confirmation…':'Confirmer la réservation'}</button>
+      </div>`;
+    } else if (s.error){
+      coordHtml = `<div class="err" style="margin-top:4px">! ${esc(s.error)}</div>`;
+    }
+
+    return `
+      <div class="res-lab">// Choisir une date</div>
+      ${daysHtml}
+      <div class="res-lab">// Créneaux — ${esc(selectedDateLabel)}</div>
+      <div class="slots">${slotsHtml}</div>
+      <div class="legend">
+        <span><i style="border:var(--bw) solid var(--line)"></i>Libre</span>
+        <span><i style="background:var(--chrome)"></i>Choisi</span>
+        <span><i style="background:var(--panel2);border:1px solid #2a2a2a"></i>Réservé</span>
+      </div>
+      <div class="res-lab">// Prestation</div>
+      ${prestaHtml}
+      ${coordHtml}`;
+  },
+
+  renderBarber(){
+    const s = this.state;
+    if (!s.barberOpen) return '';
+    let inner;
+    if (!s.barberAuthed){
+      inner = `<div class="login">
+        <div class="lab">Accès réservé — Giovany</div>
+        <input data-act="barberPw" type="password" value="${esc(s.barberPw)}" placeholder="MOT DE PASSE">
+        ${s.barberError?`<div class="err">! ${esc(s.barberError)}</div>`:''}
+        <button data-act="barberSubmit">Entrer</button>
+      </div>`;
+    } else {
+      const day = s.barberDay;
+      const rows = TIMES.map(t => {
+        const key = day + '_' + t;
+        const sl = s.bookings[key];
+        if (sl && sl.blocked){
+          return `<div class="aslot is-blocked">
+            <span class="t">${t}</span><span class="bar" style="background:${BLOCK_COLOR}"></span>
+            <div class="info"><div class="sv" style="color:var(--faint)">Indisponible</div></div>
+            <button data-act="cancel" data-key="${esc(key)}">Débloquer</button>
+          </div>`;
+        }
+        if (sl){
+          const col = SERVICE_COLORS[sl.serviceNo] || '#9a9ca2';
+          return `<div class="aslot">
+            <span class="t">${t}</span><span class="bar" style="background:${col}"></span>
+            <div class="info">
+              <div class="sv" style="color:${col}">${esc(sl.service || 'RDV')}${sl.price ? ' · ' + esc(sl.price) : ''}</div>
+              <div class="nm">${esc(sl.name || 'Client')}</div>
+            </div>
+            <button data-act="cancel" data-key="${esc(key)}">Libérer</button>
+          </div>`;
+        }
+        return `<div class="aslot is-free">
+          <span class="t">${t}</span><span class="bar"></span>
+          <div class="info"><div class="sv">Libre</div></div>
+          <button data-act="block" data-key="${esc(key)}">Bloquer</button>
+        </div>`;
+      }).join('');
+
+      const count = TIMES.filter(t => { const x = s.bookings[day + '_' + t]; return x && !x.blocked; }).length;
+      const legend = SERVICES.map(sv => `<span><i style="background:${SERVICE_COLORS[sv.no]}"></i>${esc(sv.name)}</span>`).join('');
+
+      inner = `<div class="barber-head">
+          <h3>Planning</h3>
+          <div class="acts">
+            <button data-act="refresh">Actualiser</button>
+            <button data-act="logout">Quitter</button>
+          </div>
+        </div>
+        <div class="bday">
+          <button data-act="bprev" aria-label="Jour précédent">‹</button>
+          <div class="lbl">${esc(this.labelOf(day))}</div>
+          <button data-act="bnext" aria-label="Jour suivant">›</button>
+        </div>
+        <div class="bsub">${count} rendez-vous · journée 10h–19h</div>
+        <div class="agenda">${rows}</div>
+        <div class="blegend">${legend}</div>`;
+    }
+    return `<div class="barber-box">${inner}</div>`;
+  },
+
+  render(){
+    document.getElementById('resCard').innerHTML = this.renderCard();
+    document.getElementById('barberPane').innerHTML = this.renderBarber();
+  },
+};
+
+/* ---------------- délégation d'événements ---------------- */
+document.getElementById('reserver').addEventListener('click', (e) => {
+  const t = e.target.closest('[data-act]'); if (!t) return;
+  const act = t.dataset.act;
+  if (act === 'day')          App.set({ selectedDate:t.dataset.iso, selectedSlot:null, confirmed:null, error:'' });
+  else if (act === 'prevMonth') App.shiftMonth(-1);
+  else if (act === 'nextMonth') App.shiftMonth(1);
+  else if (act === 'slot')    App.set({ selectedSlot:t.dataset.time, error:'' });
+  else if (act === 'service') App.set({ selectedService:t.dataset.no, error:'' });
+  else if (act === 'confirm') App.confirm();
+  else if (act === 'reset')   App.reset();
+  else if (act === 'refresh') App.refresh();
+  else if (act === 'bprev')   App.barberShiftDay(-1);
+  else if (act === 'bnext')   App.barberShiftDay(1);
+  else if (act === 'block')   App.blockSlot(t.dataset.key);
+  else if (act === 'logout')  App.set({ barberAuthed:false, barberOpen:false });
+  else if (act === 'cancel')  App.cancelBooking(t.dataset.key);
+  else if (act === 'barberSubmit') App.barberSubmit();
+});
+document.getElementById('reserver').addEventListener('input', (e) => {
+  const t = e.target.closest('[data-act]'); if (!t) return;
+  const act = t.dataset.act;
+  // mise à jour sans re-render pour ne pas perdre le focus
+  if (act === 'name')          App.state.name = t.value;
+  else if (act === 'phone')    App.state.phone = t.value;
+  else if (act === 'email')    App.state.email = t.value;
+  else if (act === 'barberPw') App.state.barberPw = t.value;
+});
+document.getElementById('reserver').addEventListener('keydown', (e) => {
+  const t = e.target.closest('[data-act="barberPw"]');
+  if (t && e.key === 'Enter') App.barberSubmit();
+});
+document.getElementById('barberToggle').addEventListener('click', () => {
+  App.set({ barberOpen: !App.state.barberOpen });
+});
+
+/* clic sur une prestation de "La carte" -> pré-sélection + redirection vers le planning */
+document.getElementById('menu').addEventListener('click', (e) => {
+  const row = e.target.closest('[data-book]'); if (!row) return;
+  App.set({ selectedService: row.dataset.book, confirmed:null, error:'' });
+  document.getElementById('reserver').scrollIntoView({ behavior:'smooth', block:'start' });
+});
+
+/* ---------------- démarrage ---------------- */
+App.buildDays();
+App.refresh();
+setInterval(() => App.refresh(), 20000);
+window.addEventListener('focus', () => App.refresh());
+
+/* ---------------- révélations au scroll ---------------- */
+const io = new IntersectionObserver((ents) => {
+  ents.forEach(en => { if (en.isIntersecting){ en.target.classList.add('in'); io.unobserve(en.target); } });
+}, { threshold:0.1, rootMargin:'0px 0px -7% 0px' });
+document.querySelectorAll('[data-reveal]').forEach(el => io.observe(el));
+</script>
+
+<!-- ============================ LOGO 3D INTERACTIF ============================ -->
+<script src="assets/sigil-data.js"></script>
+<script src="assets/three.min.js"></script>
+<script>
+(function(){
+const mount = document.getElementById('logo3d');
+if (mount && window.THREE && window.SIGIL_DATA) {
+  const sizeOf = () => mount.clientWidth || 300;
+
+  const scene = new THREE.Scene();
+  const camera = new THREE.PerspectiveCamera(35, 1, 0.1, 100);
+  camera.position.set(0, 0, 6);
+
+  const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.setSize(sizeOf(), sizeOf());
+  if (THREE.sRGBEncoding !== undefined) renderer.outputEncoding = THREE.sRGBEncoding;
+  mount.appendChild(renderer.domElement);
+
+  // texture du sigle (data URI -> aucun souci CORS en file://)
+  const tex = new THREE.TextureLoader().load(window.SIGIL_DATA);
+  if (THREE.sRGBEncoding !== undefined) tex.encoding = THREE.sRGBEncoding;
+  tex.anisotropy = renderer.capabilities.getMaxAnisotropy();
+  tex.generateMipmaps = true;
+  tex.minFilter = THREE.LinearMipmapLinearFilter;
+  tex.magFilter = THREE.LinearFilter;
+
+  // sigle évidé (B + S + anneau) AVEC épaisseur de pièce : empilement de plans le long de Z
+  const mat = new THREE.MeshBasicMaterial({ map: tex, alphaTest: 0.5, side: THREE.DoubleSide });
+  if ('alphaToCoverage' in mat) mat.alphaToCoverage = true;   // bords lissés via MSAA
+  const geo = new THREE.PlaneGeometry(3.4, 3.4);
+  const TH = 0.30, N = 60;                                    // épaisseur + nb de couches (dense = plein)
+  const coin = new THREE.Group();
+  for (let i = 0; i < N; i++) {
+    const layer = new THREE.Mesh(geo, mat);
+    layer.position.z = -TH / 2 + (i / (N - 1)) * TH;
+    coin.add(layer);
+  }
+  const pivot = new THREE.Group(); pivot.add(coin); scene.add(pivot);
+  pivot.rotation.y = -0.4;   // léger 3/4 au départ
+
+  // interaction : glisser pour tourner
+  let dragging = false, lx = 0, ly = 0, vx = 0, vy = 0;
+  const cv = renderer.domElement;
+  cv.addEventListener('pointerdown', (e) => {
+    dragging = true; lx = e.clientX; ly = e.clientY; vx = vy = 0;
+    cv.setPointerCapture(e.pointerId);
+  });
+  cv.addEventListener('pointermove', (e) => {
+    if (!dragging) return;
+    vx = (e.clientX - lx) * 0.01; vy = (e.clientY - ly) * 0.01;
+    lx = e.clientX; ly = e.clientY;
+    pivot.rotation.y += vx;
+    pivot.rotation.x = Math.max(-0.9, Math.min(0.9, pivot.rotation.x + vy));
+  });
+  const release = () => { dragging = false; };
+  cv.addEventListener('pointerup', release);
+  cv.addEventListener('pointercancel', release);
+
+  const animate = () => {
+    requestAnimationFrame(animate);
+    if (!dragging) {
+      pivot.rotation.y += vx;
+      pivot.rotation.x += vy;
+      pivot.rotation.x += (0 - pivot.rotation.x) * 0.05;   // se remet à plat
+      vx *= 0.94; vy *= 0.94;
+      if (Math.abs(vx) < 0.0007) pivot.rotation.y += 0.004; // rotation lente au repos
+    }
+    renderer.render(scene, camera);
+  };
+  animate();
+
+  window.addEventListener('resize', () => { const s = sizeOf(); renderer.setSize(s, s); });
+}
+})();
+</script>
+</body>
+</html>

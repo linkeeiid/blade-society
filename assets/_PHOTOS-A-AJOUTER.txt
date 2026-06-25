@@ -1,0 +1,46 @@
+==========================================================
+  BLADE SOCIETY — OÙ METTRE LES PHOTOS
+==========================================================
+
+Le site est déjà câblé. Il te suffit de déposer les fichiers
+ci-dessous avec EXACTEMENT ces noms. Aucun code à toucher.
+
+⚠️ Qualité : exporte/enregistre chaque photo dans sa
+   résolution d'origine la plus grande possible. Le fond du
+   hero est agrandi pour couvrir l'écran : plus le fichier
+   est grand (≥ 2000 px de large), plus c'est net.
+
+----------------------------------------------------------
+1) FOND DE LA PREMIÈRE PARTIE (HERO)
+----------------------------------------------------------
+  assets/salon.jpg   ← l'ambiance du salon (lumière rouge / néon)
+
+----------------------------------------------------------
+2) GALERIE « LE TRAVAIL »  -> dossier assets/gallery/
+   (dans l'ordre où tu les as envoyées)
+----------------------------------------------------------
+  01.jpg  -> mullet wavy mouillé, vue dos 3/4
+  02.jpg  -> perm bouclé sur le dessus, taper fade
+  03.jpg  -> coiffé en arrière (slick back), taper
+  04.jpg  -> quiff/mullet texturé épineux
+  05.jpg  -> frange bouclée, drop fade + barbe
+  06.jpg  -> afro court fade + barbe fournie (de face)
+  07.jpg  -> waves 360 + fade (profil/dos)
+  08.jpg  -> mullet texturé ondulé, vue dos 3/4
+  09.jpg  -> fade court, lunettes + barbe
+  10.jpg  -> mullet bouclé + taper (cadre BS au mur)
+  11.jpg  -> twists/locs sur le dessus + fade (vue du dessus)
+  12.jpg  -> comb-over skin fade + trait (hard part), de face
+  13.jpg  -> comb-over lissé + fade + barbe (étagère produits)
+  14.jpg  -> pompadour raie sur le côté + barbe
+  15.jpg  -> afro court avec dessin courbé + fade (dos)
+  16.jpg  -> buzz fade + tatouage trèfle dans le cou
+  17.jpg  -> crop frange texturée, drop fade + barbe (au tel)
+
+----------------------------------------------------------
+Tu peux en mettre plus ou moins de 17 : dans index.html,
+change la ligne « const GALLERY_COUNT = 17; » et numérote
+tes fichiers 01.jpg, 02.jpg, 03.jpg, …
+Formats acceptés : .jpg (si tu utilises .png/.webp, dis-le moi
+pour adapter l'extension dans le code).
+==========================================================

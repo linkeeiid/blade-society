@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Blade Society — Aperçu téléphone</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{min-height:100vh;background:#141414;color:#eceae3;font-family:'Segoe UI',system-ui,sans-serif;
+       display:flex;flex-direction:column;align-items:center;gap:22px;padding:30px 16px 60px}
+  h1{font-size:18px;font-weight:700;letter-spacing:.04em;text-transform:uppercase}
+  p.sub{font-size:13px;color:#a9a79e;margin-top:-12px}
+  .bar{display:flex;gap:8px;flex-wrap:wrap;justify-content:center}
+  .bar button{background:#1d1d1d;border:1px solid rgba(236,234,227,.18);color:#cfcdc6;
+       padding:9px 16px;border-radius:8px;font-size:13px;cursor:pointer;transition:.2s}
+  .bar button:hover{background:#262626;color:#fff}
+  .bar button.active{background:#eceae3;color:#0d0d0d;border-color:#eceae3}
+  /* cadre de téléphone */
+  .phone{position:relative;background:#000;border-radius:46px;padding:14px;
+       box-shadow:0 30px 80px rgba(0,0,0,.6),0 0 0 2px #2a2a2a inset;transition:width .25s,height .25s}
+  .phone::before{content:"";position:absolute;top:16px;left:50%;transform:translateX(-50%);
+       width:120px;height:26px;background:#000;border-radius:0 0 16px 16px;z-index:3}
+  .screen{position:relative;width:100%;height:100%;border-radius:34px;overflow:hidden;background:#0a0a0a}
+  iframe{width:100%;height:100%;border:0;display:block}
+  .hint{font-size:12px;color:#6f6e66}
+</style>
+</head>
+<body>
+  <h1>Blade Society — Aperçu téléphone</h1>
+  <p class="sub">Le site réel, affiché à la taille d'un smartphone. Défile à l'intérieur du cadre.</p>
+  <div class="bar" id="bar"></div>
+  <div class="phone" id="phone">
+    <div class="screen"><iframe id="frame" src="index.html" title="Aperçu mobile"></iframe></div>
+  </div>
+  <div class="hint">Astuce : pour tester sur ton vrai téléphone, ouvre le dossier sur le tél ou héberge le site (ex. Netlify, GitHub Pages).</div>
+
+<script>
+  const devices = [
+    { name:'iPhone SE',   w:375, h:667 },
+    { name:'iPhone 14',   w:390, h:844 },
+    { name:'iPhone Pro Max', w:430, h:932 },
+    { name:'Pixel 7',     w:412, h:915 },
+  ];
+  const phone = document.getElementById('phone');
+  const bar = document.getElementById('bar');
+  let active = 1;
+  function apply(i){
+    active = i;
+    const d = devices[i];
+    phone.style.width  = (d.w + 28) + 'px';
+    phone.style.height = (d.h + 28) + 'px';
+    [...bar.children].forEach((b,idx)=>b.classList.toggle('active', idx===i));
+  }
+  devices.forEach((d,i)=>{
+    const b = document.createElement('button');
+    b.textContent = d.name + ' · ' + d.w + '×' + d.h;
+    b.onclick = ()=>apply(i);
+    bar.appendChild(b);
+  });
+  apply(1);
+</script>
+</body>
+</html>

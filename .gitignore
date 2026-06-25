@@ -1,0 +1,8 @@
+# Fichiers sources non nécessaires au site en ligne
+input/
+assets/three.module.js
+
+# Fichiers système
+.DS_Store
+Thumbs.db
+desktop.ini

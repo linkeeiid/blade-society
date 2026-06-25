@@ -1,0 +1,13 @@
+{
+  "rules": {
+    ".read": false,
+    ".write": false,
+    "slots": {
+      ".read": true,
+      "$slot": {
+        ".write": "!data.exists() || !newData.exists()",
+        ".validate": "!newData.exists() || (newData.hasChildren(['service','ts']) && newData.child('service').isString() && newData.child('ts').isNumber())"
+      }
+    }
+  }
+}
