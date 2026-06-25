@@ -136,6 +136,7 @@ async function sendPush(sub, payloadStr, env) {
     method: 'POST',
     headers: {
       'TTL': '2419200',
+      'Urgency': 'high',                       // livraison prioritaire (réduit le délai iOS)
       'Content-Encoding': 'aes128gcm',
       'Content-Type': 'application/octet-stream',
       'Authorization': 'vapid t=' + jwt + ', k=' + env.VAPID_PUBLIC,
