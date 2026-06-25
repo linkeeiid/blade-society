@@ -67,7 +67,8 @@
 
   /* ============================ HERO ============================ */
   header{position:relative;min-height:100vh;display:flex;flex-direction:column;overflow:hidden;border-bottom:calc(var(--bw) + 1px) solid var(--ink)}
-  .hero-bg{position:absolute;inset:0;background:#0a0a0a center center/cover no-repeat;background-image:url('assets/salon.jpg');transform:scale(1.04);transform-origin:center;will-change:transform}
+  .hero-bg{position:absolute;inset:0;background:#0a0a0a center center/cover no-repeat;background-image:url('assets/salon-ia.jpg');transform:scale(1.04);transform-origin:center;will-change:transform}
+  @media(max-width:780px){.hero-bg{background-image:url('assets/salon-ia-vertical.jpg')}}
   .hero-bg::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(10,10,10,0.55),rgba(10,10,10,0.32) 38%,rgba(10,10,10,0.78) 78%,rgba(10,10,10,0.96));}
   .hero-grid{position:absolute;inset:0;background-image:linear-gradient(90deg,rgba(236,234,227,0.05) 1px,transparent 1px);background-size:var(--gridCol) 100%}
   .hero-glow{position:absolute;inset:0;background:radial-gradient(120% 90% at 78% 28%,rgba(150,152,160,0.34),rgba(0,0,0,0) 52%)}
@@ -130,7 +131,7 @@
 
   /* ============================ GALERIE ============================ */
   #galerie h2{font-size:clamp(44px,7vw,92px);margin-bottom:clamp(36px,5vw,56px)}
-  #galerie::before{content:"";position:absolute;inset:0;z-index:0;background:linear-gradient(180deg,rgba(10,10,10,0.9),rgba(10,10,10,0.8)),url('assets/salon2.jpg') center center/cover no-repeat}
+  #galerie::before{content:"";position:absolute;inset:0;z-index:0;background:linear-gradient(180deg,rgba(10,10,10,0.9),rgba(10,10,10,0.8)),url('assets/salon2-ia.jpg') center center/cover no-repeat}
   #galerie > .reveal{position:relative;z-index:1}
   .gallery{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:0;border-top:var(--bw) solid var(--line);border-left:var(--bw) solid var(--line)}
   .gcell{position:relative;aspect-ratio:4/5;border-right:var(--bw) solid var(--line);border-bottom:var(--bw) solid var(--line);overflow:hidden;cursor:pointer;background:linear-gradient(150deg,#1a1a1a,#0a0a0a)}
