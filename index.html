@@ -6,6 +6,14 @@
 <title>Blade Society — Architecte capillaire · Villeurbanne</title>
 <meta name="description" content="Blade Society — barbershop privé sur rendez-vous à Villeurbanne. Travail au ciseau, dégradés millimétrés, rasage traditionnel. Réservation en ligne.">
 <link rel="icon" href="assets/logo-fondu.png">
+<!-- PWA : app installable -->
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#0a0a0a">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<meta name="apple-mobile-web-app-title" content="Blade Society">
+<link rel="apple-touch-icon" href="assets/icon-192.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Anton&family=Archivo:wght@400;500;600;700;800;900&family=Archivo+Black&family=Oswald:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
@@ -684,13 +692,12 @@ const App = {
     return DOW[dt.getDay()]+' '+d+' '+MONF[m-1]+' '+y;
   },
   async notify(b){
-    const msg = '🔔 Nouvelle réservation — Blade Society\n'
+    const msg = '🔔 Blade Society — nouvelle réservation\n'
+      + this.prettyDate(b.date) + ' à ' + b.time + ' · ' + (b.service || '—') + (b.price ? ' (' + b.price + ')' : '') + '\n'
+      + '———\n'
       + 'Client : ' + b.name + '\n'
       + 'Téléphone : ' + (b.phone || '—') + '\n'
-      + 'Email : ' + b.email + '\n'
-      + 'Prestation : ' + (b.service || '—') + (b.price ? ' (' + b.price + ')' : '') + '\n'
-      + 'Date : ' + this.prettyDate(b.date) + '\n'
-      + 'Créneau : ' + b.time;
+      + 'Email : ' + b.email;
     if (CFG.TELEGRAM_BOT_TOKEN && CFG.TELEGRAM_CHAT_ID){
       try {
         const u = 'https://api.telegram.org/bot' + CFG.TELEGRAM_BOT_TOKEN + '/sendMessage'
@@ -1046,6 +1053,14 @@ const io = new IntersectionObserver((ents) => {
   ents.forEach(en => { if (en.isIntersecting){ en.target.classList.add('in'); io.unobserve(en.target); } });
 }, { threshold:0.1, rootMargin:'0px 0px -7% 0px' });
 document.querySelectorAll('[data-reveal]').forEach(el => io.observe(el));
+
+/* ---------------- PWA : enregistrement du service worker ---------------- */
+/* (ne marche qu'en HTTPS — donc sur le site GitHub Pages, pas en local file://) */
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('sw.js').catch(() => {});
+  });
+}
 </script>
 
 <!-- ============================ LOGO 3D INTERACTIF ============================ -->
