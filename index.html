@@ -701,10 +701,14 @@ const App = {
   },
   async putStore(key, slot){
     if (CFG.FIREBASE_DB_URL){
-      try { await fetch(this.base() + '/slots/' + encodeURIComponent(key) + '.json',
-        { method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify(slot) }); } catch(e){}
+      try {
+        const r = await fetch(this.base() + '/slots/' + encodeURIComponent(key) + '.json',
+          { method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify(slot) });
+        if (!r.ok) return false;     // refusé (créneau déjà pris) ou erreur serveur
+      } catch(e){ return false; }    // hors-ligne / serveur injoignable
     }
     const all = this.local(); all[key] = slot; localStorage.setItem(LS_KEY, JSON.stringify(all));
+    return true;
   },
   async delStore(key){
     if (CFG.FIREBASE_DB_URL){
@@ -797,7 +801,17 @@ const App = {
     const slot = { name, service:svc.name, serviceNo:svc.no, price:svc.price, ts:Date.now() };
     // envoyé au barber (privé, notification) : coordonnées complètes
     const full = { name, phone, email, date:this.state.selectedDate, time:this.state.selectedSlot, service:svc.name, price:svc.price };
-    await this.putStore(key, slot);
+    const ok = await this.putStore(key, slot);
+    if (!ok){
+      // soit le créneau vient d'être pris (2 clients en même temps), soit problème de connexion
+      const after = await this.fetchStore();
+      if (after[key]){
+        this.set({ bookings:after, submitting:false, selectedSlot:null, error:'Ce créneau vient d’être réservé. Choisissez-en un autre.' });
+      } else {
+        this.set({ submitting:false, error:'Réservation non enregistrée (problème de connexion ?). Réessayez.' });
+      }
+      return;
+    }
     this.notify(full);        // notification Telegram au barber (en arrière-plan)
     this.pushBarber(full);    // notification push (app) au barber (en arrière-plan)
     this.emailClient(full);   // email de confirmation au client (en arrière-plan)
