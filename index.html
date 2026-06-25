@@ -528,9 +528,9 @@ const urlB64ToU8 = (s) => {                       // clé VAPID base64url -> Uin
 };
 
 const SERVICES = [
-  { no:'01', name:'Coupe simple',                desc:'Travail au ciseau, finitions nettes',     duration:'45 min', price:'20€' },
-  { no:'02', name:'Coupe + Bouc',                desc:'Coupe + entretien du bouc',               duration:'45 min', price:'23€' },
-  { no:'03', name:'Barbe simple',                desc:'Taille & contours à la demande',          duration:'45 min', price:'14€' },
+  { no:'01', name:'Barbe simple',                desc:'Taille & contours à la demande',          duration:'45 min', price:'14€' },
+  { no:'02', name:'Coupe simple',                desc:'Travail au ciseau, finitions nettes',     duration:'45 min', price:'20€' },
+  { no:'03', name:'Coupe + Bouc',                desc:'Coupe + entretien du bouc',               duration:'45 min', price:'23€' },
   { no:'04', name:'Coupe + Barbe — traçage',     desc:'Coupe + barbe, lignes tracées',           duration:'45 min', price:'25€' },
   { no:'05', name:'Coupe + Barbe complète',      desc:'Le rituel complet, rasage traditionnel',  duration:'45 min', price:'28€' },
 ];
@@ -539,10 +539,9 @@ const SERVICE_COLORS = { '01':'#6aa3e0', '02':'#5fcf8a', '03':'#e0b15f', '04':'#
 const BLOCK_COLOR = '#6f6e66';
 const TAGS = ['Travail au ciseau','Dégradés','Rasage traditionnel','Mullet','Burst fade','Taper fade'];
 // Galerie : tes photos dans assets/gallery/ (01.jpg … 17.jpg, dans l'ordre où tu les as fournies)
-const GALLERY_COUNT = 15;
-const GALLERY = Array.from({ length: GALLERY_COUNT }, (_, i) => ({
-  src: `assets/gallery/${String(i + 1).padStart(2, '0')}.jpg`,
-}));
+// ordre d'affichage des photos (numéros de fichier) — modifiable à volonté
+const GALLERY_ORDER = [7, 1, 2, 3, 6, 4, 5, 8, 9, 10, 11, 12, 13, 14, 15];
+const GALLERY = GALLERY_ORDER.map(n => ({ src: `assets/gallery/${String(n).padStart(2, '0')}.jpg` }));
 
 /* ============================================================
    RENDU STATIQUE : services, tags, galerie
