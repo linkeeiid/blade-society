@@ -40,6 +40,52 @@ export default {
         if (res.status === 404 || res.status === 410) await env.SUBS.delete('barber'); // abonnement expiré
         return reply({ ok: res.ok, status: res.status }, 200, cors);
       }
+
+      /* ====== CMS : galerie photos (gérée par Giovany) ====== */
+      if (url.pathname === '/gallery' && req.method === 'GET') {
+        const g = await env.SUBS.get('gallery');
+        return reply({ photos: g ? JSON.parse(g) : [] }, 200, cors);
+      }
+      if (url.pathname === '/gallery/add' && req.method === 'POST') {
+        const { pw, file } = await req.json();
+        if (pw !== env.BARBER_PW) return reply({ error: 'unauthorized' }, 401, cors);
+        if (!file) return reply({ error: 'no file' }, 400, cors);
+        const up = await cloudinaryUpload(file, env);
+        if (!up || !up.secure_url) return reply({ error: 'upload failed', detail: up }, 502, cors);
+        const list = JSON.parse((await env.SUBS.get('gallery')) || '[]');
+        list.unshift({ url: up.secure_url, id: up.public_id });   // la nouvelle photo passe en premier
+        await env.SUBS.put('gallery', JSON.stringify(list));
+        return reply({ photos: list }, 200, cors);
+      }
+      if (url.pathname === '/gallery/remove' && req.method === 'POST') {
+        const { pw, id } = await req.json();
+        if (pw !== env.BARBER_PW) return reply({ error: 'unauthorized' }, 401, cors);
+        let list = JSON.parse((await env.SUBS.get('gallery')) || '[]');
+        list = list.filter(p => p.id !== id);
+        await env.SUBS.put('gallery', JSON.stringify(list));
+        cloudinaryDestroy(id, env);   // libère le stockage Cloudinary (best-effort)
+        return reply({ photos: list }, 200, cors);
+      }
+      if (url.pathname === '/content' && req.method === 'GET') {
+        const c = await env.SUBS.get('content');
+        return reply({ content: c ? JSON.parse(c) : {} }, 200, cors);
+      }
+      if (url.pathname === '/content' && req.method === 'POST') {
+        const { pw, content } = await req.json();
+        if (pw !== env.BARBER_PW) return reply({ error: 'unauthorized' }, 401, cors);
+        await env.SUBS.put('content', JSON.stringify(content || {}));
+        return reply({ ok: true }, 200, cors);
+      }
+      if (url.pathname === '/gallery/order' && req.method === 'POST') {
+        const { pw, ids } = await req.json();
+        if (pw !== env.BARBER_PW) return reply({ error: 'unauthorized' }, 401, cors);
+        const list = JSON.parse((await env.SUBS.get('gallery')) || '[]');
+        const byId = {}; list.forEach(p => byId[p.id] = p);
+        const ordered = ids.map(id => byId[id]).filter(Boolean);
+        await env.SUBS.put('gallery', JSON.stringify(ordered));
+        return reply({ photos: ordered }, 200, cors);
+      }
+
       return reply({ error: 'not found' }, 404, cors);
     } catch (e) {
       return reply({ error: String((e && e.message) || e) }, 500, cors);
@@ -49,6 +95,37 @@ export default {
 
 function reply(obj, status, cors) {
   return new Response(JSON.stringify(obj), { status, headers: { 'Content-Type': 'application/json', ...cors } });
+}
+
+/* ---------- Cloudinary (upload signé : le secret reste dans le Worker) ---------- */
+async function sha1hex(str) {
+  const buf = await crypto.subtle.digest('SHA-1', new TextEncoder().encode(str));
+  return [...new Uint8Array(buf)].map(b => b.toString(16).padStart(2, '0')).join('');
+}
+async function cloudinaryUpload(fileDataUri, env) {
+  const ts = Math.floor(Date.now() / 1000);
+  const folder = 'blade-society';
+  const signature = await sha1hex(`folder=${folder}&timestamp=${ts}` + env.CLOUDINARY_SECRET);
+  const form = new FormData();
+  form.append('file', fileDataUri);            // data:image/...;base64,... (accepté par Cloudinary)
+  form.append('api_key', env.CLOUDINARY_KEY);
+  form.append('timestamp', String(ts));
+  form.append('folder', folder);
+  form.append('signature', signature);
+  const r = await fetch(`https://api.cloudinary.com/v1_1/${env.CLOUDINARY_CLOUD}/image/upload`, { method: 'POST', body: form });
+  try { return await r.json(); } catch (e) { return null; }
+}
+async function cloudinaryDestroy(publicId, env) {
+  try {
+    const ts = Math.floor(Date.now() / 1000);
+    const signature = await sha1hex(`public_id=${publicId}&timestamp=${ts}` + env.CLOUDINARY_SECRET);
+    const form = new FormData();
+    form.append('public_id', publicId);
+    form.append('api_key', env.CLOUDINARY_KEY);
+    form.append('timestamp', String(ts));
+    form.append('signature', signature);
+    await fetch(`https://api.cloudinary.com/v1_1/${env.CLOUDINARY_CLOUD}/image/destroy`, { method: 'POST', body: form });
+  } catch (e) {}
 }
 
 /* ---------- utilitaires base64url / bytes ---------- */

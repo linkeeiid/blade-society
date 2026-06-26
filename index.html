@@ -265,6 +265,30 @@
   .blegend{display:flex;flex-wrap:wrap;gap:10px 16px;margin-top:18px;padding-top:16px;border-top:var(--bw) solid var(--line);font-family:'Space Mono',monospace;font-size:10.5px;color:var(--mut)}
   .blegend span{display:flex;align-items:center;gap:7px}
   .blegend i{width:11px;height:11px;border-radius:2px;display:inline-block}
+  /* ---- gestion des photos (CMS) ---- */
+  .bphotos{margin-top:20px;padding-top:18px;border-top:calc(var(--bw) + 1px) solid var(--ink)}
+  .bphoto-pw{width:100%;background:var(--panel2);border:var(--bw) solid var(--line);border-radius:var(--radius);color:var(--ink);padding:13px 14px;font-family:'Space Mono',monospace;font-size:13px;outline:none;margin-bottom:10px;letter-spacing:0.08em}
+  .bphoto-btn{width:100%;background:var(--ink);color:#0d0d0d;border:none;border-radius:var(--radius);padding:12px;font-family:'Space Mono',monospace;font-size:11px;letter-spacing:0.12em;text-transform:uppercase;font-weight:700;cursor:pointer}
+  .bphoto-add{display:block;text-align:center;background:var(--chrome);color:#0d0d0d;border-radius:var(--radius);padding:14px;font-family:'Space Mono',monospace;font-size:12px;letter-spacing:0.08em;text-transform:uppercase;font-weight:700;cursor:pointer;margin-bottom:14px;transition:transform .2s}
+  .bphoto-add:hover{transform:translateY(-2px)}
+  .bphoto-add.busy{opacity:.55;cursor:default;transform:none}
+  .bphoto-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(82px,1fr));gap:8px}
+  .bphoto-cell{position:relative;aspect-ratio:1/1;border:var(--bw) solid var(--line);overflow:hidden}
+  .bphoto-cell img{width:100%;height:100%;object-fit:cover;display:block}
+  .bphoto-cell .bp-del{position:absolute;top:3px;right:3px;width:23px;height:23px;border-radius:50%;background:rgba(10,10,10,0.78);border:1px solid var(--line);color:#fff;font-size:12px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .2s}
+  .bphoto-cell .bp-del:hover{background:#e0846f;color:#0d0d0d;border-color:#e0846f}
+  .bphoto-cell .bp-move{position:absolute;bottom:0;left:0;right:0;display:flex;background:rgba(10,10,10,0.62)}
+  .bphoto-cell .bp-move button{flex:1;background:none;border:none;color:#fff;padding:4px 0;font-size:15px;line-height:1;cursor:pointer}
+  .bphoto-cell .bp-move button:disabled{opacity:.28;cursor:default}
+  .bphoto-cell .bp-move button:hover:not(:disabled){background:rgba(255,255,255,0.16)}
+  .bphoto-hint{font-family:'Space Mono',monospace;font-size:10px;color:var(--faint);margin-top:10px}
+  /* ---- édition des textes (CMS) ---- */
+  .btx-l{display:block;font-family:'Space Mono',monospace;font-size:10px;letter-spacing:0.1em;text-transform:uppercase;color:var(--faint);margin:12px 0 6px}
+  .btx-ta{width:100%;min-height:80px;background:var(--panel2);border:var(--bw) solid var(--line);border-radius:var(--radius);color:var(--ink);padding:11px 13px;font-family:'Archivo',sans-serif;font-size:14px;line-height:1.5;outline:none;resize:vertical}
+  .btx-svc{display:grid;grid-template-columns:1fr 90px;gap:8px;margin-bottom:8px}
+  .btx-svc input{background:var(--panel2);border:var(--bw) solid var(--line);border-radius:var(--radius);color:var(--ink);padding:10px 12px;font-family:'Space Mono',monospace;font-size:12.5px;outline:none}
+  .btx-svc input.px{text-align:center}
+  .btx-ok{font-family:'Space Mono',monospace;font-size:12px;color:#5fcf8a;margin-bottom:10px}
   .login{max-width:340px;margin:0 auto;text-align:center;padding:8px 0}
   .login .lab{font-family:'Space Mono',monospace;font-size:11px;letter-spacing:0.12em;text-transform:uppercase;color:var(--faint);margin-bottom:16px}
   .login input{width:100%;background:var(--panel2);border:var(--bw) solid var(--line);border-radius:var(--radius);color:var(--ink);padding:14px 16px;font-family:'Space Mono',monospace;font-size:13px;outline:none;text-align:center;letter-spacing:0.1em;margin-bottom:12px}
@@ -341,7 +365,7 @@
   </div>
 
   <div class="hero-foot">
-    <p>Travail au ciseau, dégradés millimétrés, rasage traditionnel. Une coupe construite comme une structure — une séance, un client, une signature.</p>
+    <p id="heroIntro">Travail au ciseau, dégradés millimétrés, rasage traditionnel. Une coupe construite comme une structure — une séance, un client, une signature.</p>
     <div class="hero-actions">
       <a class="link-mono" href="#galerie">↓ La galerie</a>
       <a class="btn-chrome" href="#reserver">Prendre rendez-vous →</a>
@@ -359,8 +383,8 @@
       </div>
       <div>
         <h2 class="head">Giovany</h2>
-        <p>Je ne coupe pas seulement des cheveux : je dessine des lignes. Avant le premier coup de ciseau, je lis chaque tête comme une matière — sa densité, son implantation, son mouvement. Pas de chaîne, pas de précipitation : juste toi, le fauteuil, et le travail bien fait.</p>
-        <p>Blade Society, c'est mon atelier privé, sur rendez-vous, pensé pour qu'on s'y sente tout de suite à l'aise. J'aime prendre le temps d'écouter, d'échanger, de comprendre ce que tu veux vraiment. On discute, on rigole, et tu repars avec une coupe nette et le sentiment d'avoir été bien reçu.</p>
+        <p id="bio1">Je ne coupe pas seulement des cheveux : je dessine des lignes. Avant le premier coup de ciseau, je lis chaque tête comme une matière — sa densité, son implantation, son mouvement. Pas de chaîne, pas de précipitation : juste toi, le fauteuil, et le travail bien fait.</p>
+        <p id="bio2">Blade Society, c'est mon atelier privé, sur rendez-vous, pensé pour qu'on s'y sente tout de suite à l'aise. J'aime prendre le temps d'écouter, d'échanger, de comprendre ce que tu veux vraiment. On discute, on rigole, et tu repars avec une coupe nette et le sentiment d'avoir été bien reçu.</p>
         <div class="stats">
           <div><div class="num">01</div><div class="lab">Fauteuil</div></div>
           <div><div class="num">45'</div><div class="lab">Par séance</div></div>
@@ -541,23 +565,26 @@ const SERVICE_COLORS = { '01':'#6aa3e0', '02':'#5fcf8a', '03':'#e0b15f', '04':'#
 const BLOCK_COLOR = '#6f6e66';
 const TAGS = ['Travail au ciseau','Dégradés','Rasage traditionnel','Mullet','Burst fade','Taper fade'];
 // Galerie : tes photos dans assets/gallery/ (01.jpg … 17.jpg, dans l'ordre où tu les as fournies)
-// ordre d'affichage des photos (numéros de fichier) — modifiable à volonté
+// ordre d'affichage des photos livrées (défaut si le CMS est vide)
 const GALLERY_ORDER = [7, 1, 2, 3, 11, 4, 5, 8, 9, 10, 6, 12, 13, 14, 15];
-const GALLERY = GALLERY_ORDER.map(n => ({ src: `assets/gallery/${String(n).padStart(2, '0')}.jpg` }));
+let GALLERY = GALLERY_ORDER.map(n => ({ src: `assets/gallery/${String(n).padStart(2, '0')}.jpg` }));
 
 /* ============================================================
    RENDU STATIQUE : services, tags, galerie
    ============================================================ */
-document.getElementById('menu').innerHTML = SERVICES.map(s => `
-  <button class="srv" data-book="${esc(s.no)}" aria-label="Réserver : ${esc(s.name)}">
-    <span class="no">${esc(s.no)}</span>
-    <div style="min-width:0">
-      <div class="name">${esc(s.name)}</div>
-      <div class="desc">${esc(s.desc)}</div>
-    </div>
-    <span class="dur">${esc(s.duration)}</span>
-    <span class="price">${SHOW_PRICES ? esc(s.price) : 'Sur RDV'}</span>
-  </button>`).join('');
+function renderMenu(){
+  document.getElementById('menu').innerHTML = SERVICES.map(s => `
+    <button class="srv" data-book="${esc(s.no)}" aria-label="Réserver : ${esc(s.name)}">
+      <span class="no">${esc(s.no)}</span>
+      <div style="min-width:0">
+        <div class="name">${esc(s.name)}</div>
+        <div class="desc">${esc(s.desc)}</div>
+      </div>
+      <span class="dur">${esc(s.duration)}</span>
+      <span class="price">${SHOW_PRICES ? esc(s.price) : 'Sur RDV'}</span>
+    </button>`).join('');
+}
+renderMenu();
 
 document.getElementById('tags').innerHTML = TAGS.map(t => `<span>${esc(t)}</span>`).join('');
 
@@ -592,12 +619,79 @@ document.getElementById('tags').innerHTML = TAGS.map(t => `<span>${esc(t)}</span
 // On n'affiche que les 6 premières vignettes ; les autres restent accessibles
 // dans la visionneuse (clic sur une vignette puis flèches / défilement).
 const GALLERY_VISIBLE = 6;
-const galleryExtra = Math.max(0, GALLERY.length - GALLERY_VISIBLE);
-document.getElementById('gallery').innerHTML = GALLERY.slice(0, GALLERY_VISIBLE).map((g, i) => `
-  <div class="gcell" data-idx="${i}">
-    <img src="${g.src}" alt="Réalisation Blade Society n°${i + 1}" loading="lazy" onerror="this.style.display='none'">
-    ${(i === GALLERY_VISIBLE - 1 && galleryExtra > 0) ? `<div class="gmore">+${galleryExtra} photos</div>` : ''}
-  </div>`).join('');
+function renderGallery(){
+  const extra = Math.max(0, GALLERY.length - GALLERY_VISIBLE);
+  document.getElementById('gallery').innerHTML = GALLERY.slice(0, GALLERY_VISIBLE).map((g, i) => `
+    <div class="gcell" data-idx="${i}">
+      <img src="${g.src}" alt="Réalisation Blade Society n°${i + 1}" loading="lazy" onerror="this.style.display='none'">
+      ${(i === GALLERY_VISIBLE - 1 && extra > 0) ? `<div class="gmore">+${extra} photos</div>` : ''}
+    </div>`).join('');
+}
+renderGallery();
+
+// ---- photos gérées par Giovany (CMS via le Worker) ----
+let cmsPhotos = [];
+function applyGallery(){
+  GALLERY = cmsPhotos.length
+    ? cmsPhotos.map(p => ({ src:p.url, id:p.id }))
+    : GALLERY_ORDER.map(n => ({ src:`assets/gallery/${pad(n)}.jpg` }));
+  renderGallery();
+}
+async function loadGallery(){
+  if (!CFG.PUSH_ENDPOINT) return;
+  try {
+    const r = await fetch(CFG.PUSH_ENDPOINT.replace(/\/$/,'') + '/gallery');
+    const d = await r.json();
+    if (d && Array.isArray(d.photos)){ cmsPhotos = d.photos; applyGallery(); }
+  } catch(e){}
+}
+// redimensionne la photo avant l'envoi (plus léger + rapide)
+function resizeImage(file, maxDim, quality){
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => {
+      let w = img.width, h = img.height;
+      if (w >= h && w > maxDim){ h = Math.round(h*maxDim/w); w = maxDim; }
+      else if (h > w && h > maxDim){ w = Math.round(w*maxDim/h); h = maxDim; }
+      const cv = document.createElement('canvas'); cv.width = w; cv.height = h;
+      cv.getContext('2d').drawImage(img, 0, 0, w, h);
+      resolve(cv.toDataURL('image/jpeg', quality));
+    };
+    img.onerror = reject;
+    img.src = URL.createObjectURL(file);
+  });
+}
+loadGallery();
+
+// ---- textes éditables par Giovany (CMS) ----
+let siteContent = {
+  heroIntro: (document.getElementById('heroIntro') || {}).textContent || '',
+  bio1: (document.getElementById('bio1') || {}).textContent || '',
+  bio2: (document.getElementById('bio2') || {}).textContent || '',
+  services: SERVICES.map(s => ({ no: s.no, name: s.name, price: s.price, desc: s.desc })),
+};
+function applyContent(c){
+  if (c.heroIntro != null){ const e = document.getElementById('heroIntro'); if (e) e.textContent = c.heroIntro; }
+  if (c.bio1 != null){ const e = document.getElementById('bio1'); if (e) e.textContent = c.bio1; }
+  if (c.bio2 != null){ const e = document.getElementById('bio2'); if (e) e.textContent = c.bio2; }
+  if (Array.isArray(c.services)){
+    c.services.forEach(cs => { const sv = SERVICES.find(x => x.no === cs.no); if (sv){ if (cs.name) sv.name = cs.name; if (cs.price != null) sv.price = cs.price; if (cs.desc != null) sv.desc = cs.desc; } });
+    renderMenu();
+    try { App.render(); } catch(e){}
+  }
+}
+async function loadContent(){
+  if (!CFG.PUSH_ENDPOINT) return;
+  try {
+    const r = await fetch(CFG.PUSH_ENDPOINT.replace(/\/$/,'') + '/content');
+    const d = await r.json();
+    if (d && d.content && typeof d.content === 'object' && Object.keys(d.content).length){
+      siteContent = Object.assign({}, siteContent, d.content);
+      applyContent(siteContent);
+    }
+  } catch(e){}
+}
+loadContent();
 
 /* ---- visionneuse plein écran ---- */
 (() => {
@@ -677,6 +771,7 @@ const App = {
     bookings:{}, confirmed:null, myBookings:[],
     barberOpen:false, barberPw:'', barberAuthed:false, barberError:'', barberDay:'', pushOn:false,
     barberCalY:0, barberCalM:0,
+    adminPwInput:'', cmsUploading:false, cmsError:'', textEdit:null, textSaved:false,
   },
   MONTHS_AHEAD: 12,   // nombre de mois consultables vers l'avenir
 
@@ -868,6 +963,123 @@ const App = {
   refreshNav(){
     const el = document.getElementById('navPlanning');
     if (el) el.style.display = this.state.barberAuthed ? 'flex' : 'none';
+  },
+  /* ---------------- CMS : gestion des photos (Giovany) ---------------- */
+  adminPw(){ try { return localStorage.getItem('bs_admin_pw') || ''; } catch(e){ return ''; } },
+  saveAdminPw(){
+    const pw = (this.state.adminPwInput || '').trim();
+    if (!pw) return;
+    try { localStorage.setItem('bs_admin_pw', pw); } catch(e){}
+    this.set({ adminPwInput:'', cmsError:'' });
+  },
+  clearAdminPw(){ try { localStorage.removeItem('bs_admin_pw'); } catch(e){} },
+  cmsUrl(p){ return CFG.PUSH_ENDPOINT.replace(/\/$/,'') + p; },
+  async addPhoto(input){
+    const file = input.files && input.files[0];
+    if (!file) return;
+    this.set({ cmsUploading:true, cmsError:'' });
+    try {
+      const dataUrl = await resizeImage(file, 1400, 0.85);
+      const r = await fetch(this.cmsUrl('/gallery/add'), { method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ pw:this.adminPw(), file:dataUrl }) });
+      if (r.status === 401){ this.clearAdminPw(); this.set({ cmsUploading:false, cmsError:'Mot de passe admin incorrect.' }); return; }
+      const d = await r.json();
+      if (!r.ok || !d.photos){ this.set({ cmsUploading:false, cmsError:'Échec de l’envoi, réessayez.' }); return; }
+      cmsPhotos = d.photos; applyGallery();
+      this.set({ cmsUploading:false });
+    } catch(e){ this.set({ cmsUploading:false, cmsError:'Échec de l’envoi.' }); }
+  },
+  async removePhoto(id){
+    try {
+      const r = await fetch(this.cmsUrl('/gallery/remove'), { method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ pw:this.adminPw(), id }) });
+      if (r.status === 401){ this.clearAdminPw(); this.set({ cmsError:'Mot de passe admin incorrect.' }); return; }
+      const d = await r.json();
+      if (d.photos){ cmsPhotos = d.photos; applyGallery(); this.set({}); }
+    } catch(e){}
+  },
+  async movePhoto(id, dir){
+    const idx = cmsPhotos.findIndex(p => p.id === id);
+    const ni = idx + dir;
+    if (idx < 0 || ni < 0 || ni >= cmsPhotos.length) return;
+    const arr = cmsPhotos.slice();
+    [arr[idx], arr[ni]] = [arr[ni], arr[idx]];
+    cmsPhotos = arr; applyGallery(); this.set({});   // affichage immédiat
+    try {
+      const r = await fetch(this.cmsUrl('/gallery/order'), { method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ pw:this.adminPw(), ids: cmsPhotos.map(p => p.id) }) });
+      if (r.status === 401){ this.clearAdminPw(); this.set({ cmsError:'Mot de passe admin incorrect.' }); }
+    } catch(e){}
+  },
+  renderBarberPhotos(){
+    const s = this.state;
+    if (!CFG.PUSH_ENDPOINT) return '';
+    let inner;
+    if (!this.adminPw()){
+      inner = `<input class="bphoto-pw" data-act="adminpw" type="password" value="${esc(s.adminPwInput||'')}" placeholder="MOT DE PASSE ADMIN">
+        <button class="bphoto-btn" data-act="adminpwsave">Déverrouiller la gestion photos</button>`;
+    } else {
+      inner = `<label class="bphoto-add${s.cmsUploading?' busy':''}">
+          ${s.cmsUploading ? 'Envoi en cours…' : '+ Ajouter une photo'}
+          <input type="file" accept="image/*" data-act="photofile" ${s.cmsUploading?'disabled':''} hidden>
+        </label>
+        <div class="bphoto-grid">
+          ${cmsPhotos.length ? cmsPhotos.map((p, i) => `
+            <div class="bphoto-cell">
+              <img src="${esc(p.url)}" alt="">
+              <button class="bp-del" data-act="photodel" data-id="${esc(p.id)}" aria-label="Supprimer">✕</button>
+              <div class="bp-move">
+                <button data-act="photoleft" data-id="${esc(p.id)}" ${i===0?'disabled':''} aria-label="Avancer">‹</button>
+                <button data-act="photoright" data-id="${esc(p.id)}" ${i===cmsPhotos.length-1?'disabled':''} aria-label="Reculer">›</button>
+              </div>
+            </div>`).join('')
+            : `<div class="empty">Aucune photo ajoutée. Les photos livrées s'affichent par défaut.</div>`}
+        </div>
+        <div class="bphoto-hint">Les 6 premières s'affichent sur le site · ‹ › pour réordonner</div>`;
+    }
+    return `<div class="bphotos">
+      <div class="res-lab" style="margin-bottom:10px">// Photos de la galerie</div>
+      ${s.cmsError ? `<div class="err" style="margin-bottom:10px">! ${esc(s.cmsError)}</div>` : ''}
+      ${inner}
+    </div>`;
+  },
+  // ---- CMS : édition des textes ----
+  renderBarberTexts(){
+    if (!CFG.PUSH_ENDPOINT || !this.adminPw()) return '';
+    if (!this.state.textEdit) this.state.textEdit = JSON.parse(JSON.stringify(siteContent));
+    const t = this.state.textEdit;
+    const svc = (t.services || []).map((s, i) => `
+      <div class="btx-svc">
+        <input data-act="txsvcname" data-i="${i}" value="${esc(s.name)}" placeholder="Nom">
+        <input data-act="txsvcprice" data-i="${i}" value="${esc(s.price)}" placeholder="Prix" class="px">
+      </div>`).join('');
+    return `<div class="bphotos">
+      <div class="res-lab" style="margin-bottom:10px">// Textes du site</div>
+      ${this.state.textSaved ? `<div class="btx-ok">Enregistré ✓</div>` : ''}
+      <label class="btx-l">Intro (accueil)</label>
+      <textarea data-act="txhero" class="btx-ta">${esc(t.heroIntro || '')}</textarea>
+      <label class="btx-l">Bio — paragraphe 1</label>
+      <textarea data-act="txbio1" class="btx-ta">${esc(t.bio1 || '')}</textarea>
+      <label class="btx-l">Bio — paragraphe 2</label>
+      <textarea data-act="txbio2" class="btx-ta">${esc(t.bio2 || '')}</textarea>
+      <label class="btx-l">La carte (nom · prix)</label>
+      ${svc}
+      <button class="bphoto-btn" data-act="txsave" style="margin-top:12px">Enregistrer les textes</button>
+    </div>`;
+  },
+  async saveTexts(){
+    try {
+      const r = await fetch(this.cmsUrl('/content'), { method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ pw:this.adminPw(), content:this.state.textEdit }) });
+      if (r.status === 401){ this.clearAdminPw(); this.set({ cmsError:'Mot de passe admin incorrect.' }); return; }
+      const d = await r.json();
+      if (d && d.ok){
+        siteContent = JSON.parse(JSON.stringify(this.state.textEdit));
+        applyContent(siteContent);
+        this.set({ textSaved:true });
+        setTimeout(() => { this.state.textSaved = false; this.render(); }, 2500);
+      }
+    } catch(e){}
   },
   // ouvre le planning et défile jusqu'à lui (depuis le menu ou une notification)
   openPlanning(){
@@ -1159,7 +1371,9 @@ const App = {
           : `<button class="bpush" data-act="enablePush">🔔 Activer les notifications sur cet appareil</button>`}
         ${s.barberError ? `<div class="err" style="margin:0 0 12px">! ${esc(s.barberError)}</div>` : ''}
         <div class="agenda">${rows}</div>
-        <div class="blegend">${legend}</div>`;
+        <div class="blegend">${legend}</div>
+        ${this.renderBarberPhotos()}
+        ${this.renderBarberTexts()}`;
     }
     return `<div class="barber-box">${inner}</div>`;
   },
@@ -1189,6 +1403,11 @@ document.getElementById('reserver').addEventListener('click', (e) => {
   else if (act === 'bcalprev') App.barberCalShift(-1);
   else if (act === 'bcalnext') App.barberCalShift(1);
   else if (act === 'bdaypick') App.set({ barberDay: t.dataset.iso });
+  else if (act === 'adminpwsave') App.saveAdminPw();
+  else if (act === 'photodel') App.removePhoto(t.dataset.id);
+  else if (act === 'photoleft') App.movePhoto(t.dataset.id, -1);
+  else if (act === 'photoright') App.movePhoto(t.dataset.id, 1);
+  else if (act === 'txsave') App.saveTexts();
   else if (act === 'block')   App.blockSlot(t.dataset.key);
   else if (act === 'enablePush') App.enablePush();
   else if (act === 'logout')  App.barberLogout();
@@ -1203,10 +1422,20 @@ document.getElementById('reserver').addEventListener('input', (e) => {
   else if (act === 'phone')    App.state.phone = t.value;
   else if (act === 'email')    App.state.email = t.value;
   else if (act === 'barberPw') App.state.barberPw = t.value;
+  else if (act === 'adminpw')  App.state.adminPwInput = t.value;
+  else if (act === 'txhero')   { if (App.state.textEdit) App.state.textEdit.heroIntro = t.value; }
+  else if (act === 'txbio1')   { if (App.state.textEdit) App.state.textEdit.bio1 = t.value; }
+  else if (act === 'txbio2')   { if (App.state.textEdit) App.state.textEdit.bio2 = t.value; }
+  else if (act === 'txsvcname'){ if (App.state.textEdit) App.state.textEdit.services[+t.dataset.i].name = t.value; }
+  else if (act === 'txsvcprice'){ if (App.state.textEdit) App.state.textEdit.services[+t.dataset.i].price = t.value; }
 });
 document.getElementById('reserver').addEventListener('keydown', (e) => {
   const t = e.target.closest('[data-act="barberPw"]');
   if (t && e.key === 'Enter') App.barberSubmit();
+});
+document.getElementById('reserver').addEventListener('change', (e) => {
+  const t = e.target.closest('[data-act="photofile"]');
+  if (t) App.addPhoto(t);
 });
 document.getElementById('barberToggle').addEventListener('click', () => {
   App.set({ barberOpen: !App.state.barberOpen });
