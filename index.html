@@ -64,6 +64,18 @@
   .navlinks a:hover{background:var(--panel2);color:#fff}
   .navlinks a.cta{padding:18px clamp(22px,2.6vw,34px);background:var(--ink);color:#0d0d0d;font-weight:700;letter-spacing:0.12em}
   .navlinks a.cta:hover{background:var(--ink);color:#0d0d0d}
+  .navlinks a.navbarber{padding:0 16px}
+  @media(max-width:560px){.navlinks a.navbarber{padding:0 11px;font-size:10px}}
+
+  /* ============================ MODIFICATIONS (overlay barber) ============================ */
+  .modifs{position:fixed;inset:0;z-index:250;background:var(--bg);overflow-y:auto;display:none}
+  .modifs.open{display:block}
+  .modifs-bar{position:sticky;top:0;z-index:2;display:flex;align-items:center;justify-content:space-between;padding:15px clamp(18px,4vw,40px);border-bottom:var(--bw) solid var(--line);background:rgba(13,13,13,0.92);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px)}
+  .modifs-title{font-family:var(--display);font-weight:400;font-size:clamp(20px,4vw,30px);text-transform:uppercase;letter-spacing:0.02em}
+  .modifs-close{background:none;border:var(--bw) solid var(--line);color:var(--ink);width:42px;height:42px;border-radius:var(--radius);font-size:16px;cursor:pointer;transition:all .25s}
+  .modifs-close:hover{background:var(--ink);color:#0d0d0d}
+  .modifs-body{max-width:760px;margin:0 auto;padding:clamp(20px,4vw,40px)}
+  .modifs-body .bphotos:first-child{margin-top:0;border-top:none;padding-top:0}
 
   /* ============================ HERO ============================ */
   header{position:relative;min-height:100vh;display:flex;flex-direction:column;overflow:hidden;border-bottom:calc(var(--bw) + 1px) solid var(--ink)}
@@ -342,7 +354,8 @@
     <a class="hide-sm" href="#apropos">À propos</a>
     <a class="hide-sm" href="#services">Services</a>
     <a class="hide-sm" href="#galerie">Galerie</a>
-    <a id="navPlanning" href="#reserver" style="display:none">Planning</a>
+    <a id="navPlanning" class="navbarber" href="#reserver" style="display:none">Planning</a>
+    <a id="navModifs" class="navbarber" href="#" style="display:none">Modifications</a>
     <a class="cta" href="#reserver">Réserver →</a>
   </div>
 </nav>
@@ -487,6 +500,15 @@
     <span>44 AV. PAUL KRUGER, 69100 VILLEURBANNE</span>
   </div>
 </footer>
+
+<!-- ============================ MODIFICATIONS (barber) ============================ -->
+<div id="modifs" class="modifs">
+  <div class="modifs-bar">
+    <span class="modifs-title">Modifications</span>
+    <button class="modifs-close" data-act="closemodifs" aria-label="Fermer">✕</button>
+  </div>
+  <div class="modifs-body" id="modifsContent"></div>
+</div>
 
 <!-- ============================ VISIONNEUSE ============================ -->
 <div class="lb" id="lightbox" role="dialog" aria-modal="true" aria-label="Visionneuse photo">
@@ -771,7 +793,7 @@ const App = {
     bookings:{}, confirmed:null, myBookings:[],
     barberOpen:false, barberPw:'', barberAuthed:false, barberError:'', barberDay:'', pushOn:false,
     barberCalY:0, barberCalM:0,
-    adminPwInput:'', cmsUploading:false, cmsError:'', textEdit:null, textSaved:false,
+    adminPwInput:'', cmsUploading:false, cmsError:'', textEdit:null, textSaved:false, modifsOpen:false,
   },
   MONTHS_AHEAD: 12,   // nombre de mois consultables vers l'avenir
 
@@ -961,8 +983,9 @@ const App = {
   },
   // affiche le lien "Planning" du menu uniquement quand Giovany est connecté
   refreshNav(){
-    const el = document.getElementById('navPlanning');
-    if (el) el.style.display = this.state.barberAuthed ? 'flex' : 'none';
+    const disp = this.state.barberAuthed ? 'flex' : 'none';
+    const p = document.getElementById('navPlanning'); if (p) p.style.display = disp;
+    const m = document.getElementById('navModifs');   if (m) m.style.display = disp;
   },
   /* ---------------- CMS : gestion des photos (Giovany) ---------------- */
   adminPw(){ try { return localStorage.getItem('bs_admin_pw') || ''; } catch(e){ return ''; } },
@@ -1080,6 +1103,21 @@ const App = {
         setTimeout(() => { this.state.textSaved = false; this.render(); }, 2500);
       }
     } catch(e){}
+  },
+  // ---- page "Modifications" (CMS regroupé) ----
+  openModifs(){ document.body.style.overflow = 'hidden'; this.set({ modifsOpen:true }); },
+  closeModifs(){ document.body.style.overflow = ''; this.set({ modifsOpen:false }); },
+  renderModifs(){
+    if (!this.state.barberAuthed) return '<div class="empty">Accès réservé.</div>';
+    if (!this.adminPw()){
+      return `<div class="bphotos" style="margin-top:0;border-top:none;padding-top:0">
+        <div class="res-lab" style="margin-bottom:10px">// Mot de passe admin (1 fois)</div>
+        ${this.state.cmsError ? `<div class="err" style="margin-bottom:10px">! ${esc(this.state.cmsError)}</div>` : ''}
+        <input class="bphoto-pw" data-act="adminpw" type="password" value="${esc(this.state.adminPwInput||'')}" placeholder="MOT DE PASSE ADMIN">
+        <button class="bphoto-btn" data-act="adminpwsave">Déverrouiller les modifications</button>
+      </div>`;
+    }
+    return this.renderBarberPhotos() + this.renderBarberTexts();
   },
   // ouvre le planning et défile jusqu'à lui (depuis le menu ou une notification)
   openPlanning(){
@@ -1371,9 +1409,7 @@ const App = {
           : `<button class="bpush" data-act="enablePush">🔔 Activer les notifications sur cet appareil</button>`}
         ${s.barberError ? `<div class="err" style="margin:0 0 12px">! ${esc(s.barberError)}</div>` : ''}
         <div class="agenda">${rows}</div>
-        <div class="blegend">${legend}</div>
-        ${this.renderBarberPhotos()}
-        ${this.renderBarberTexts()}`;
+        <div class="blegend">${legend}</div>`;
     }
     return `<div class="barber-box">${inner}</div>`;
   },
@@ -1382,6 +1418,11 @@ const App = {
     document.getElementById('resCard').innerHTML = this.renderCard();
     document.getElementById('myBookings').innerHTML = this.renderMyBookings();
     document.getElementById('barberPane').innerHTML = this.renderBarber();
+    const modifs = document.getElementById('modifs');
+    if (modifs){
+      modifs.classList.toggle('open', this.state.modifsOpen);
+      document.getElementById('modifsContent').innerHTML = this.state.modifsOpen ? this.renderModifs() : '';
+    }
   },
 };
 
@@ -1458,6 +1499,36 @@ App.refresh();
 
 /* lien "Planning" du menu */
 document.getElementById('navPlanning').addEventListener('click', (e) => { e.preventDefault(); App.openPlanning(); });
+document.getElementById('navModifs').addEventListener('click', (e) => { e.preventDefault(); App.openModifs(); });
+
+/* délégation d'événements pour la page Modifications (CMS) */
+(() => {
+  const m = document.getElementById('modifs');
+  m.addEventListener('click', (e) => {
+    const t = e.target.closest('[data-act]'); if (!t) return;
+    const act = t.dataset.act;
+    if (act === 'closemodifs')      App.closeModifs();
+    else if (act === 'adminpwsave') App.saveAdminPw();
+    else if (act === 'photodel')    App.removePhoto(t.dataset.id);
+    else if (act === 'photoleft')   App.movePhoto(t.dataset.id, -1);
+    else if (act === 'photoright')  App.movePhoto(t.dataset.id, 1);
+    else if (act === 'txsave')      App.saveTexts();
+  });
+  m.addEventListener('input', (e) => {
+    const t = e.target.closest('[data-act]'); if (!t) return;
+    const act = t.dataset.act;
+    if (act === 'adminpw')          App.state.adminPwInput = t.value;
+    else if (act === 'txhero')      { if (App.state.textEdit) App.state.textEdit.heroIntro = t.value; }
+    else if (act === 'txbio1')      { if (App.state.textEdit) App.state.textEdit.bio1 = t.value; }
+    else if (act === 'txbio2')      { if (App.state.textEdit) App.state.textEdit.bio2 = t.value; }
+    else if (act === 'txsvcname')   { if (App.state.textEdit) App.state.textEdit.services[+t.dataset.i].name = t.value; }
+    else if (act === 'txsvcprice')  { if (App.state.textEdit) App.state.textEdit.services[+t.dataset.i].price = t.value; }
+  });
+  m.addEventListener('change', (e) => {
+    const t = e.target.closest('[data-act="photofile"]');
+    if (t) App.addPhoto(t);
+  });
+})();
 
 /* arrivée depuis un clic sur la notification -> ouvrir le planning */
 if (location.hash === '#planning') App.openPlanning();
