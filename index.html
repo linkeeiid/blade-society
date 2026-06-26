@@ -5,6 +5,17 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Blade Society — Architecte capillaire · Villeurbanne</title>
 <meta name="description" content="Blade Society — barbershop privé sur rendez-vous à Villeurbanne. Travail au ciseau, dégradés millimétrés, rasage traditionnel. Réservation en ligne.">
+<!-- Aperçu de partage (Instagram, WhatsApp, Snap, Facebook...) -->
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Blade Society">
+<meta property="og:title" content="Blade Society — Barbier privé · Villeurbanne">
+<meta property="og:description" content="Barbershop privé sur rendez-vous. Travail au ciseau, dégradés, rasage traditionnel. Réservez en ligne.">
+<meta property="og:image" content="https://linkeeiid.github.io/blade-society/assets/og.jpg">
+<meta property="og:url" content="https://linkeeiid.github.io/blade-society/">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Blade Society — Barbier privé · Villeurbanne">
+<meta name="twitter:description" content="Barbershop privé sur rendez-vous. Réservez en ligne.">
+<meta name="twitter:image" content="https://linkeeiid.github.io/blade-society/assets/og.jpg">
 <link rel="icon" href="assets/logo-fondu.png">
 <!-- PWA : app installable -->
 <link rel="manifest" href="manifest.json">
@@ -939,6 +950,32 @@ const App = {
     this.set({ bookings, myBookings: mine, confirmed:full, submitting:false, selectedSlot:null, selectedService:null, name:'', phone:'', email:'' });
   },
   reset(){ this.set({ confirmed:null, selectedSlot:null, error:'' }); },
+  // le client ajoute son RDV à l'agenda de son téléphone (.ics)
+  addToCalendar(){
+    const b = this.state.confirmed; if (!b || !b.date || !b.time) return;
+    const d = b.date.replace(/-/g, '');
+    const start = d + 'T' + b.time.replace(':', '') + '00';
+    const end = d + 'T' + slotEnd(b.time).replace(':', '') + '00';
+    const stamp = new Date().toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
+    const ics = [
+      'BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//Blade Society//FR','CALSCALE:GREGORIAN',
+      'BEGIN:VEVENT',
+      'UID:' + d + b.time.replace(':', '') + '@blade-society',
+      'DTSTAMP:' + stamp,
+      'DTSTART:' + start,
+      'DTEND:' + end,
+      'SUMMARY:RDV Blade Society' + (b.service ? ' — ' + b.service : ''),
+      'LOCATION:44 Avenue Paul Kruger\\, 69100 Villeurbanne',
+      'DESCRIPTION:' + (b.service ? b.service + ' chez Blade Society' : 'Rendez-vous chez Blade Society'),
+      'END:VEVENT','END:VCALENDAR'
+    ].join('\r\n');
+    const blob = new Blob([ics], { type: 'text/calendar' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = 'rdv-blade-society.ics';
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  },
   // le client annule lui-même un de ses rendez-vous (pris sur cet appareil)
   async cancelMine(key){
     await this.delStore(key);
@@ -1248,6 +1285,7 @@ const App = {
         <div class="big">C'est noté.</div>
         <p class="l1">${esc((s.confirmed.service ? s.confirmed.service + ' · ' : '') + this.prettyDate(s.confirmed.date) + ' · ' + s.confirmed.time)}</p>
         <p class="l2">Votre réservation a été validée. Vous allez recevoir une confirmation dans quelques instants…</p>
+        <button class="btn-chrome" data-act="ics" style="margin-bottom:14px">＋ Ajouter à mon agenda</button>
         <button class="ghost" data-act="reset">Réserver un autre créneau</button>
       </div>`;
     }
@@ -1437,6 +1475,7 @@ document.getElementById('reserver').addEventListener('click', (e) => {
   else if (act === 'service') App.set({ selectedService:t.dataset.no, error:'' });
   else if (act === 'confirm') App.confirm();
   else if (act === 'reset')   App.reset();
+  else if (act === 'ics')     App.addToCalendar();
   else if (act === 'cancelmine') App.cancelMine(t.dataset.key);
   else if (act === 'refresh') App.refresh();
   else if (act === 'bprev')   App.barberShiftDay(-1);
@@ -1631,5 +1670,8 @@ if (mount && window.THREE && window.SIGIL_DATA) {
 }
 })();
 </script>
+
+<!-- Cloudflare Web Analytics -->
+<script defer src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "959caa7f8d854913a908dc3b14ed5daa"}'></script>
 </body>
 </html>
