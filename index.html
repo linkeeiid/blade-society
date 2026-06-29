@@ -10,12 +10,12 @@
 <meta property="og:site_name" content="Blade Society">
 <meta property="og:title" content="Blade Society — Barbier privé · Villeurbanne">
 <meta property="og:description" content="Barbershop privé sur rendez-vous. Travail au ciseau, dégradés, rasage traditionnel. Réservez en ligne.">
-<meta property="og:image" content="https://linkeeiid.github.io/blade-society/assets/og.jpg">
-<meta property="og:url" content="https://linkeeiid.github.io/blade-society/">
+<meta property="og:image" content="https://bladesociety.fr/assets/og.jpg">
+<meta property="og:url" content="https://bladesociety.fr/">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="Blade Society — Barbier privé · Villeurbanne">
 <meta name="twitter:description" content="Barbershop privé sur rendez-vous. Réservez en ligne.">
-<meta name="twitter:image" content="https://linkeeiid.github.io/blade-society/assets/og.jpg">
+<meta name="twitter:image" content="https://bladesociety.fr/assets/og.jpg">
 <link rel="icon" href="assets/logo-fondu.png">
 <!-- PWA : app installable -->
 <link rel="manifest" href="manifest.json">
@@ -100,9 +100,11 @@
   .hero-meta{position:relative;margin-top:clamp(96px,12vh,128px);padding:18px clamp(20px,4vw,40px);border-bottom:var(--bw) solid var(--line);border-top:var(--bw) solid var(--line);font-family:'Space Mono',monospace;font-size:clamp(10px,1.1vw,12px);letter-spacing:0.06em;color:#8f8d84;display:flex;justify-content:space-between;flex-wrap:wrap;gap:10px}
   .hero-title-wrap{position:relative;flex:1;display:flex;align-items:center;justify-content:flex-start;gap:clamp(10px,2.5vw,40px);flex-wrap:wrap;padding:clamp(24px,4vw,48px) clamp(20px,4vw,40px) 0}
   .hero-title-wrap .hero-title{flex:0 1 auto;min-width:0}
-  #logo3d{flex:0 0 auto;width:clamp(170px,24vw,340px);height:clamp(170px,24vw,340px);margin-left:clamp(16px,9vw,190px);position:relative;cursor:grab;touch-action:pan-y}
-  #logo3d:active{cursor:grabbing}
-  #logo3d canvas{display:block;width:100%!important;height:100%!important}
+  #logo3d{flex:0 0 auto;width:clamp(170px,24vw,340px);height:clamp(170px,24vw,340px);margin-left:clamp(16px,9vw,190px);position:relative;touch-action:pan-y}
+  #logo3d canvas{display:block;width:100%!important;height:100%!important;cursor:grab}
+  #logo3d canvas:active{cursor:grabbing}
+  .logo-static{width:100%;height:100%;object-fit:contain;pointer-events:none;filter:drop-shadow(0 10px 34px rgba(0,0,0,0.55));animation:logoFloat 5.5s ease-in-out infinite}
+  @keyframes logoFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-9px)}}
   /* --- hero sur téléphone : titre remonté + logo 3D intercalé sous le titre --- */
   @media(max-width:560px){
     .hero-meta{margin-top:clamp(70px,10vh,92px)}
@@ -1594,80 +1596,79 @@ if ('serviceWorker' in navigator) {
 }
 </script>
 
-<!-- ============================ LOGO 3D INTERACTIF ============================ -->
+<!-- ============================ LOGO BS — 3D sur mobile, statique sur ordinateur ============================ -->
 <script src="assets/sigil-data.js"></script>
 <script src="assets/three.min.js"></script>
 <script>
 (function(){
-const mount = document.getElementById('logo3d');
-if (mount && window.THREE && window.SIGIL_DATA) {
-  const sizeOf = () => mount.clientWidth || 300;
+  const mount = document.getElementById('logo3d');
+  if (!mount || !window.SIGIL_DATA) return;
+  const staticLogo = () => { mount.innerHTML = '<img class="logo-static" src="' + window.SIGIL_DATA + '" alt="Blade Society">'; };
 
-  const scene = new THREE.Scene();
-  const camera = new THREE.PerspectiveCamera(35, 1, 0.1, 100);
-  camera.position.set(0, 0, 6);
+  // Le 3D (WebGL) plante sur certaines cartes graphiques d'ordinateur -> uniquement sur mobile.
+  const isMobile = window.matchMedia('(max-width: 600px)').matches;
+  let webgl = false;
+  try { const c = document.createElement('canvas'); webgl = !!(window.WebGLRenderingContext && (c.getContext('webgl') || c.getContext('experimental-webgl'))); } catch(e){}
+  if (!isMobile || !window.THREE || !webgl) { staticLogo(); return; }
 
-  const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-  renderer.setSize(sizeOf(), sizeOf());
-  if (THREE.sRGBEncoding !== undefined) renderer.outputEncoding = THREE.sRGBEncoding;
-  mount.appendChild(renderer.domElement);
+  try {
+    const sizeOf = () => mount.clientWidth || 300;
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(35, 1, 0.1, 100);
+    camera.position.set(0, 0, 6);
+    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.setSize(sizeOf(), sizeOf());
+    if (THREE.sRGBEncoding !== undefined) renderer.outputEncoding = THREE.sRGBEncoding;
+    mount.appendChild(renderer.domElement);
 
-  // texture du sigle (data URI -> aucun souci CORS en file://)
-  const tex = new THREE.TextureLoader().load(window.SIGIL_DATA);
-  if (THREE.sRGBEncoding !== undefined) tex.encoding = THREE.sRGBEncoding;
-  tex.anisotropy = renderer.capabilities.getMaxAnisotropy();
-  tex.generateMipmaps = true;
-  tex.minFilter = THREE.LinearMipmapLinearFilter;
-  tex.magFilter = THREE.LinearFilter;
+    const tex = new THREE.TextureLoader().load(window.SIGIL_DATA);
+    if (THREE.sRGBEncoding !== undefined) tex.encoding = THREE.sRGBEncoding;
+    tex.anisotropy = renderer.capabilities.getMaxAnisotropy();
+    tex.generateMipmaps = true;
+    tex.minFilter = THREE.LinearMipmapLinearFilter;
+    tex.magFilter = THREE.LinearFilter;
 
-  // sigle évidé (B + S + anneau) AVEC épaisseur de pièce : empilement de plans le long de Z
-  const mat = new THREE.MeshBasicMaterial({ map: tex, alphaTest: 0.5, side: THREE.DoubleSide });
-  if ('alphaToCoverage' in mat) mat.alphaToCoverage = true;   // bords lissés via MSAA
-  const geo = new THREE.PlaneGeometry(3.4, 3.4);
-  const TH = 0.30, N = 60;                                    // épaisseur + nb de couches (dense = plein)
-  const coin = new THREE.Group();
-  for (let i = 0; i < N; i++) {
-    const layer = new THREE.Mesh(geo, mat);
-    layer.position.z = -TH / 2 + (i / (N - 1)) * TH;
-    coin.add(layer);
-  }
-  const pivot = new THREE.Group(); pivot.add(coin); scene.add(pivot);
-  pivot.rotation.y = -0.4;   // léger 3/4 au départ
-
-  // interaction : glisser pour tourner
-  let dragging = false, lx = 0, ly = 0, vx = 0, vy = 0;
-  const cv = renderer.domElement;
-  cv.addEventListener('pointerdown', (e) => {
-    dragging = true; lx = e.clientX; ly = e.clientY; vx = vy = 0;
-    cv.setPointerCapture(e.pointerId);
-  });
-  cv.addEventListener('pointermove', (e) => {
-    if (!dragging) return;
-    vx = (e.clientX - lx) * 0.01; vy = (e.clientY - ly) * 0.01;
-    lx = e.clientX; ly = e.clientY;
-    pivot.rotation.y += vx;
-    pivot.rotation.x = Math.max(-0.9, Math.min(0.9, pivot.rotation.x + vy));
-  });
-  const release = () => { dragging = false; };
-  cv.addEventListener('pointerup', release);
-  cv.addEventListener('pointercancel', release);
-
-  const animate = () => {
-    requestAnimationFrame(animate);
-    if (!dragging) {
-      pivot.rotation.y += vx;
-      pivot.rotation.x += vy;
-      pivot.rotation.x += (0 - pivot.rotation.x) * 0.05;   // se remet à plat
-      vx *= 0.94; vy *= 0.94;
-      if (Math.abs(vx) < 0.0007) pivot.rotation.y += 0.004; // rotation lente au repos
+    const mat = new THREE.MeshBasicMaterial({ map: tex, alphaTest: 0.5, side: THREE.DoubleSide });
+    if ('alphaToCoverage' in mat) mat.alphaToCoverage = true;
+    const geo = new THREE.PlaneGeometry(3.4, 3.4);
+    const TH = 0.30, N = 60;
+    const coin = new THREE.Group();
+    for (let i = 0; i < N; i++) {
+      const layer = new THREE.Mesh(geo, mat);
+      layer.position.z = -TH / 2 + (i / (N - 1)) * TH;
+      coin.add(layer);
     }
-    renderer.render(scene, camera);
-  };
-  animate();
+    const pivot = new THREE.Group(); pivot.add(coin); scene.add(pivot);
+    pivot.rotation.y = -0.4;
 
-  window.addEventListener('resize', () => { const s = sizeOf(); renderer.setSize(s, s); });
-}
+    let dragging = false, lx = 0, ly = 0, vx = 0, vy = 0;
+    const cv = renderer.domElement;
+    cv.addEventListener('pointerdown', (e) => { dragging = true; lx = e.clientX; ly = e.clientY; vx = vy = 0; cv.setPointerCapture(e.pointerId); });
+    cv.addEventListener('pointermove', (e) => {
+      if (!dragging) return;
+      vx = (e.clientX - lx) * 0.01; vy = (e.clientY - ly) * 0.01;
+      lx = e.clientX; ly = e.clientY;
+      pivot.rotation.y += vx;
+      pivot.rotation.x = Math.max(-0.9, Math.min(0.9, pivot.rotation.x + vy));
+    });
+    const release = () => { dragging = false; };
+    cv.addEventListener('pointerup', release);
+    cv.addEventListener('pointercancel', release);
+
+    const animate = () => {
+      requestAnimationFrame(animate);
+      if (!dragging) {
+        pivot.rotation.y += vx; pivot.rotation.x += vy;
+        pivot.rotation.x += (0 - pivot.rotation.x) * 0.05;
+        vx *= 0.94; vy *= 0.94;
+        if (Math.abs(vx) < 0.0007) pivot.rotation.y += 0.004;
+      }
+      renderer.render(scene, camera);
+    };
+    animate();
+    window.addEventListener('resize', () => { const s = sizeOf(); renderer.setSize(s, s); });
+  } catch(e) { staticLogo(); }
 })();
 </script>
 
