@@ -10,6 +10,8 @@
      BREVO_API_KEY  (secret)  = clé API Brevo (xkeysib-...)
      SENDER_EMAIL   (texte)   = contact@bladesociety.fr  (expéditeur vérifié dans Brevo)
      SENDER_NAME    (texte)   = Blade Society
+   SMS de confirmation client (route POST /sms, via Brevo, payant) :
+     SMS_SENDER     (texte)   = nom expéditeur SMS, 11 caractères max (ex: BladeSoc)
    Binding KV (Settings → Variables → KV Namespace Bindings) :
      Variable name = SUBS
    ===================================================================== */
@@ -96,7 +98,23 @@ export default {
               : (b.old_date && b.old_slot) ? 'Votre rendez-vous a été modifié — Blade Society'
               : 'Votre rendez-vous chez Blade Society',
             htmlContent: clientEmailHtml(b),
+            textContent: clientEmailText(b),
+            replyTo: { email: env.SENDER_EMAIL, name: env.SENDER_NAME || 'Blade Society' },
           }),
+        });
+        return reply({ ok: r.ok, status: r.status }, 200, cors);
+      }
+
+      /* ====== SMS de confirmation au client (via Brevo) ====== */
+      if (url.pathname === '/sms' && req.method === 'POST') {
+        if (!env.BREVO_API_KEY || !env.SMS_SENDER) return reply({ error: 'sms not configured' }, 503, cors);
+        const b = await req.json();
+        const to = normalizeFrPhone(b && b.to_phone);
+        if (!to || !b.content) return reply({ error: 'bad sms' }, 400, cors);
+        const r = await fetch('https://api.brevo.com/v3/transactionalSMS/sms', {
+          method: 'POST',
+          headers: { 'api-key': env.BREVO_API_KEY, 'Content-Type': 'application/json', 'accept': 'application/json' },
+          body: JSON.stringify({ sender: env.SMS_SENDER, recipient: to, content: b.content, type: 'transactional' }),
         });
         return reply({ ok: r.ok, status: r.status }, 200, cors);
       }
@@ -119,6 +137,18 @@ export default {
 
 function reply(obj, status, cors) {
   return new Response(JSON.stringify(obj), { status, headers: { 'Content-Type': 'application/json', ...cors } });
+}
+
+/* ---------- Téléphone FR -> format international Brevo (33XXXXXXXXX, sans +) ---------- */
+function normalizeFrPhone(raw) {
+  let s = String(raw || '').replace(/[^\d+]/g, '');
+  if (s.indexOf('+') > 0) s = s.replace(/\+/g, '');   // + uniquement en tête, sinon on nettoie
+  if (s[0] === '+') s = s.slice(1);
+  if (s.slice(0, 4) === '0033') s = '33' + s.slice(4);
+  else if (s.slice(0, 2) === '33') { /* déjà international */ }
+  else if (s[0] === '0') s = '33' + s.slice(1);       // 06... -> 336...
+  if (!/^\d{10,15}$/.test(s)) return '';              // garde-fou format
+  return s;
 }
 
 /* ---------- Email de confirmation client (HTML) ---------- */
@@ -232,6 +262,35 @@ function clientEmailHtml(b) {
     </td></tr>
   </table>
   </body></html>`;
+}
+
+/* ---------- Email client : version TEXTE (multipart -> meilleure délivrabilité) ---------- */
+function clientEmailText(b) {
+  const name = b.to_name || '';
+  const service = b.service || '';
+  const price = b.price || '';
+  const date = b.date || '';
+  const slot = b.slot || '';
+  const L = ['BLADE SOCIETY — Coiffeur · Barbier', ''];
+  if (b.cancelled) {
+    L.push('Bonjour ' + name + ',', 'Votre rendez-vous a bien été annulé.');
+    if (service) L.push('Prestation : ' + service);
+    if (date) L.push('Date : ' + date);
+    if (slot) L.push('Heure : ' + slot);
+    L.push('', 'Au plaisir de vous revoir. Reprenez rendez-vous quand vous voulez sur https://bladesociety.fr');
+    return L.join('\n');
+  }
+  const isMod = b.old_date && b.old_slot;
+  L.push('Bonjour ' + name + ',', isMod ? 'Votre rendez-vous a bien été modifié.' : 'Votre rendez-vous est confirmé.');
+  if (isMod) L.push('Ancien créneau : ' + b.old_date + ' · ' + b.old_slot);
+  if (service) L.push('Prestation : ' + service + (price ? ' (' + price + ')' : ''));
+  if (date) L.push('Date : ' + date);
+  if (slot) L.push('Heure : ' + slot);
+  L.push('', 'Adresse : 44 Avenue Paul Kruger, 69100 Villeurbanne',
+    'Accès (10 min avant) : feu rouge / portillon gris, interphone « Blade Society », bâtiment A, ascenseur 3e étage, porte marron, 2e bureau à droite.');
+  if (b.manage_url) L.push('', 'Gérer, déplacer ou annuler votre rendez-vous : ' + b.manage_url);
+  L.push('', 'À très vite, Giovany — Blade Society', 'https://bladesociety.fr');
+  return L.join('\n');
 }
 
 /* ---------- Cloudinary (upload signé : le secret reste dans le Worker) ---------- */

@@ -282,6 +282,9 @@
   .bday button:last-child{border-left:var(--bw) solid var(--line)}
   .bday button:hover{background:var(--ink);color:#0d0d0d}
   .bsub{font-family:'Space Mono',monospace;font-size:11px;letter-spacing:0.08em;text-transform:uppercase;color:var(--faint);margin-bottom:14px}
+  .bday-acts{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px}
+  .bday-acts button{flex:1;min-width:160px;background:none;border:var(--bw) solid var(--line);color:var(--ink);padding:11px 14px;border-radius:var(--radius);font-family:'Space Mono',monospace;font-size:10.5px;letter-spacing:0.08em;text-transform:uppercase;cursor:pointer;transition:all .25s}
+  .bday-acts button:hover{background:var(--ink);color:#0d0d0d}
   .bpush{display:block;width:100%;margin-bottom:14px;padding:13px;border-radius:var(--radius);background:var(--chrome);color:#0d0d0d;border:none;font-family:'Space Mono',monospace;font-size:12px;letter-spacing:0.08em;text-transform:uppercase;font-weight:700;cursor:pointer;transition:transform .25s}
   .bpush:hover{transform:translateY(-2px)}
   .bpush.on{background:none;border:var(--bw) solid var(--line);color:var(--mut);font-weight:400;cursor:default}
@@ -479,7 +482,7 @@
       <div class="a1">44 Avenue Paul Kruger</div>
       <div class="a2">69100 Villeurbanne, France</div>
       <div class="hours">
-        <div><span>LUN — SAM</span><span>10h – 20h</span></div>
+        <div><span>LUN — SAM</span><span>11h – 20h</span></div>
         <div><span>DIMANCHE</span><span style="color:var(--faint)">Fermé</span></div>
       </div>
       <a class="btn-chrome" href="#reserver" style="margin-top:34px;font-family:'Space Mono',monospace;font-size:12px;letter-spacing:0.12em;padding:16px 36px">Réserver →</a>
@@ -509,7 +512,7 @@
     </div>
     <div class="foot-col">
       <h4>// Horaires</h4>
-      <div class="foot-hours">Lun – Sam · 10h – 20h<br>Dimanche fermé</div>
+      <div class="foot-hours">Lun – Sam · 11h – 20h<br>Dimanche fermé</div>
     </div>
   </div>
   <div class="foot-bot">
@@ -587,9 +590,9 @@ const LS_KEY = 'bladesociety_slots_v2';
 const LS_BARBER = 'bladesociety_barber_auth_v1';   // connexion barber persistante
 const RL_MAX = 3, RL_WINDOW_MIN = 15;              // max 3 réservations / 15 min par appareil (anti-spam)
 // Créneaux de 45 min, 10h → 20h (la pause est gérée par Giovany via « Bloquer »)
-const TIMES  = ['10:00','10:45','11:30','12:15','13:00','13:45','14:30','15:15','16:00','16:45','17:30','18:15','19:00'];
+const TIMES  = ['11:00','11:45','12:30','13:15','14:00','14:45','15:30','16:15','17:00','17:45','18:30','19:15'];
 const slotEnd = (t) => { let [h,m] = t.split(':').map(Number); m += 45; if (m >= 60){ h++; m -= 60; } return pad(h)+':'+pad(m); };
-const frTime = (t) => { const p = String(t).split(':'); return (p[1] === '00') ? p[0] + 'h' : p[0] + 'h' + p[1]; };  // 10:00 -> 10h, 10:45 -> 10h45
+const frTime = (t) => { const p = String(t).split(':'); return p[0] + 'h' + p[1]; };  // 11:00 -> 11h00, 11:45 -> 11h45
 const DOW    = ['Dim','Lun','Mar','Mer','Jeu','Ven','Sam'];
 const MON    = ['janv.','févr.','mars','avr.','mai','juin','juil.','août','sept.','oct.','nov.','déc.'];
 const MONF   = ['janvier','février','mars','avril','mai','juin','juillet','août','septembre','octobre','novembre','décembre'];
@@ -629,7 +632,6 @@ function renderMenu(){
         <div class="name">${esc(s.name)}</div>
         <div class="desc">${esc(s.desc)}</div>
       </div>
-      <span class="dur">${esc(s.duration)}</span>
       <span class="price">${SHOW_PRICES ? esc(s.price) : 'Sur RDV'}</span>
     </button>`).join('');
 }
@@ -925,6 +927,27 @@ const App = {
       });
     } catch(e){}
   },
+  // SMS de CONFIRMATION au client (via le Worker -> Brevo, payant). Texte SANS accents (GSM-7, coût maîtrisé).
+  // Envoyé UNIQUEMENT à la réservation : modif/annulation se font via l'email (pas de SMS = pas de surcoût).
+  async smsClient(b){
+    if (!CFG.PUSH_ENDPOINT || !b.phone) return;
+    const content =
+      'Blade Society\n' +
+      'RDV confirme le ' + this.smsDate(b.date) + ' a ' + frTime(b.time) + '.\n' +
+      'Acces (10min avant): feu rouge/portillon gris, interphone "Blade Society", batiment A, ascenseur 3e etage, porte marron, 2e bureau a droite.\n' +
+      'Pour modifier ou annuler: uniquement via le lien de votre email.\n' +
+      'A bientot !';
+    try {
+      await fetch(CFG.PUSH_ENDPOINT.replace(/\/$/, '') + '/sms', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ to_phone: b.phone, content }),
+      });
+    } catch(e){}
+  },
+  smsDate(iso){
+    const p = String(iso).split('-');
+    return p.length === 3 ? p[2] + '/' + p[1] : String(iso);
+  },
 
   /* ---------------- réservation ---------------- */
   async confirm(){
@@ -969,6 +992,7 @@ const App = {
     this.notify(full);        // notification Telegram au barber (en arrière-plan)
     this.pushBarber(full);    // notification push (app) au barber (en arrière-plan)
     this.emailClient(full);   // email de confirmation au client (en arrière-plan)
+    this.smsClient(full);     // SMS de confirmation au client (en arrière-plan)
     try { rlt.push(now); localStorage.setItem('bs_bk_times', JSON.stringify(rlt)); } catch(e){}
     const mine = (this.state.myBookings || []).concat([{ key, service: full.service, date: full.date, time: full.time }]);
     try { localStorage.setItem('bs_my_bookings', JSON.stringify(mine)); } catch(e){}
@@ -1313,6 +1337,24 @@ const App = {
     const bookings = await this.fetchStore();
     this.set({ bookings });
   },
+  // bloque tous les créneaux LIBRES de la journée affichée (ne touche pas aux RDV clients)
+  async blockDay(){
+    const day = this.state.barberDay; if (!day) return;
+    const free = TIMES.filter(t => !this.state.bookings[day + '_' + t]);
+    if (!free.length) return;
+    await Promise.all(free.map(t => this.putStore(day + '_' + t, { name:'', service:'Bloqué', serviceNo:'X', blocked:true, ts:Date.now() })));
+    const bookings = await this.fetchStore();
+    this.set({ bookings });
+  },
+  // libère uniquement les créneaux BLOQUÉS de la journée (laisse les RDV clients)
+  async unblockDay(){
+    const day = this.state.barberDay; if (!day) return;
+    const blocked = TIMES.filter(t => { const x = this.state.bookings[day + '_' + t]; return x && x.blocked; });
+    if (!blocked.length) return;
+    await Promise.all(blocked.map(t => this.delStore(day + '_' + t)));
+    const bookings = await this.fetchStore();
+    this.set({ bookings });
+  },
 
   /* ---------------- calendrier ---------------- */
   todayMidnight(){ const t = new Date(); t.setHours(0,0,0,0); return t; },
@@ -1590,6 +1632,8 @@ const App = {
       }).join('');
 
       const count = TIMES.filter(t => { const x = s.bookings[day + '_' + t]; return x && !x.blocked; }).length;
+      const freeCount = TIMES.filter(t => !s.bookings[day + '_' + t]).length;
+      const blockedCount = TIMES.filter(t => { const x = s.bookings[day + '_' + t]; return x && x.blocked; }).length;
       const legend = SERVICES.map(sv => `<span><i style="background:${SERVICE_COLORS[sv.no]}"></i>${esc(sv.name)}</span>`).join('');
 
       inner = `<div class="barber-head">
@@ -1606,6 +1650,10 @@ const App = {
           <button data-act="bnext" aria-label="Jour suivant">›</button>
         </div>
         <div class="bsub">${count} rendez-vous · séances de 45 min</div>
+        <div class="bday-acts">
+          ${freeCount ? `<button data-act="blockday">Bloquer toute la journée</button>` : ''}
+          ${blockedCount ? `<button data-act="unblockday">Libérer les créneaux bloqués</button>` : ''}
+        </div>
         ${s.pushOn
           ? `<div class="bpush on">🔔 Notifications activées sur cet appareil</div>`
           : `<button class="bpush" data-act="enablePush">🔔 Activer les notifications sur cet appareil</button>`}
@@ -1658,6 +1706,8 @@ document.getElementById('reserver').addEventListener('click', (e) => {
   else if (act === 'photoright') App.movePhoto(t.dataset.id, 1);
   else if (act === 'txsave') App.saveTexts();
   else if (act === 'block')   App.blockSlot(t.dataset.key);
+  else if (act === 'blockday')   App.blockDay();
+  else if (act === 'unblockday') App.unblockDay();
   else if (act === 'enablePush') App.enablePush();
   else if (act === 'logout')  App.barberLogout();
   else if (act === 'cancel')  App.cancelBooking(t.dataset.key);
