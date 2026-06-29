@@ -216,7 +216,7 @@
   .cal-cell.today:not(.sel)::after{content:'';position:absolute;bottom:8px;left:50%;transform:translateX(-50%);width:4px;height:4px;border-radius:50%;background:var(--solid)}
   .cal-cell .cdot{position:absolute;top:5px;right:5px;width:5px;height:5px;border-radius:50%;background:var(--solid)}
   .cal-cell.sel .cdot{background:#0d0d0d}
-  .slots{display:grid;grid-template-columns:repeat(auto-fill,minmax(118px,1fr));gap:0;border-top:var(--bw) solid var(--line);border-left:var(--bw) solid var(--line);margin-bottom:26px}
+  .slots{display:grid;grid-template-columns:repeat(auto-fill,minmax(84px,1fr));gap:0;border-top:var(--bw) solid var(--line);border-left:var(--bw) solid var(--line);margin-bottom:26px}
   .slot{padding:15px 0;border-right:var(--bw) solid var(--line);border-bottom:var(--bw) solid var(--line);font-family:'Space Mono',monospace;font-size:13px;letter-spacing:0.03em;text-align:center;transition:all .2s;background:transparent;color:var(--ink);cursor:pointer}
   .slot.sel{background:var(--chrome);color:#0d0d0d;font-weight:700}
   .slot.taken{background:var(--panel2);color:#56554f;border-color:#222;cursor:not-allowed;text-decoration:line-through}
@@ -576,6 +576,7 @@ const RL_MAX = 3, RL_WINDOW_MIN = 15;              // max 3 réservations / 15 m
 // Créneaux de 45 min, 10h → 20h (la pause est gérée par Giovany via « Bloquer »)
 const TIMES  = ['10:00','10:45','11:30','12:15','13:00','13:45','14:30','15:15','16:00','16:45','17:30','18:15','19:00'];
 const slotEnd = (t) => { let [h,m] = t.split(':').map(Number); m += 45; if (m >= 60){ h++; m -= 60; } return pad(h)+':'+pad(m); };
+const frTime = (t) => { const p = String(t).split(':'); return (p[1] === '00') ? p[0] + 'h' : p[0] + 'h' + p[1]; };  // 10:00 -> 10h, 10:45 -> 10h45
 const DOW    = ['Dim','Lun','Mar','Mer','Jeu','Ven','Sam'];
 const MON    = ['janv.','févr.','mars','avr.','mai','juin','juil.','août','sept.','oct.','nov.','déc.'];
 const MONF   = ['janvier','février','mars','avril','mai','juin','juillet','août','septembre','octobre','novembre','décembre'];
@@ -996,7 +997,7 @@ const App = {
       <div class="res-lab">// Mes rendez-vous</div>
       ${list.map(b => `<div class="myb-row">
         <div style="min-width:0">
-          <div class="myb-d">${esc(this.labelOf(b.date))} · ${esc(b.time)}</div>
+          <div class="myb-d">${esc(this.labelOf(b.date))} · ${esc(frTime(b.time))}</div>
           <div class="myb-s">${esc(b.service || '')}</div>
         </div>
         <button data-act="cancelmine" data-key="${esc(b.key)}">Annuler</button>
@@ -1285,7 +1286,7 @@ const App = {
     if (s.confirmed){
       return `<div class="confirmed">
         <div class="big">C'est noté.</div>
-        <p class="l1">${esc((s.confirmed.service ? s.confirmed.service + ' · ' : '') + this.prettyDate(s.confirmed.date) + ' · ' + s.confirmed.time)}</p>
+        <p class="l1">${esc((s.confirmed.service ? s.confirmed.service + ' · ' : '') + this.prettyDate(s.confirmed.date) + ' · ' + frTime(s.confirmed.time))}</p>
         <p class="l2">Votre réservation a été validée. Vous allez recevoir une confirmation dans quelques instants…</p>
         <button class="btn-chrome" data-act="ics" style="margin-bottom:14px">＋ Ajouter à mon agenda</button>
         <button class="ghost" data-act="reset">Réserver un autre créneau</button>
@@ -1340,7 +1341,7 @@ const App = {
       const taken = !!s.bookings[key];
       const sel = s.selectedSlot === t;
       const cls = 'slot' + (taken?' taken':(sel?' sel':''));
-      return `<button class="${cls}" data-act="slot" data-time="${t}"${taken?' disabled':''}>${taken?'Réservé':t+' – '+slotEnd(t)}</button>`;
+      return `<button class="${cls}" data-act="slot" data-time="${t}"${taken?' disabled':''}>${taken?'Réservé':frTime(t)}</button>`;
     }).join('');
 
     /* --- sélecteur de prestation (toujours visible) --- */
@@ -1355,7 +1356,7 @@ const App = {
 
     let coordHtml = '';
     if (s.selectedSlot){
-      const summary = [selectedDateLabel, s.selectedSlot, svc ? svc.name : null].filter(Boolean).join(' · ');
+      const summary = [selectedDateLabel, frTime(s.selectedSlot), svc ? svc.name : null].filter(Boolean).join(' · ');
       coordHtml = `<div class="coord">
         <div class="res-lab">// Vos coordonnées</div>
         <div class="coord-sum">${esc(summary)}</div>
@@ -1404,7 +1405,7 @@ const App = {
         const sl = s.bookings[key];
         if (sl && sl.blocked){
           return `<div class="aslot is-blocked">
-            <span class="t">${t}</span><span class="bar" style="background:${BLOCK_COLOR}"></span>
+            <span class="t">${frTime(t)}</span><span class="bar" style="background:${BLOCK_COLOR}"></span>
             <div class="info"><div class="sv" style="color:var(--faint)">Indisponible</div></div>
             <button data-act="cancel" data-key="${esc(key)}">Débloquer</button>
           </div>`;
@@ -1412,7 +1413,7 @@ const App = {
         if (sl){
           const col = SERVICE_COLORS[sl.serviceNo] || '#9a9ca2';
           return `<div class="aslot">
-            <span class="t">${t}</span><span class="bar" style="background:${col}"></span>
+            <span class="t">${frTime(t)}</span><span class="bar" style="background:${col}"></span>
             <div class="info">
               <div class="sv" style="color:${col}">${esc(sl.service || 'RDV')}${sl.price ? ' · ' + esc(sl.price) : ''}</div>
               <div class="nm">${esc(sl.name || 'Client')}</div>
@@ -1421,7 +1422,7 @@ const App = {
           </div>`;
         }
         return `<div class="aslot is-free">
-          <span class="t">${t}</span><span class="bar"></span>
+          <span class="t">${frTime(t)}</span><span class="bar"></span>
           <div class="info"><div class="sv">Libre</div></div>
           <button data-act="block" data-key="${esc(key)}">Bloquer</button>
         </div>`;
