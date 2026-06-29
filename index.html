@@ -602,7 +602,7 @@ const BLOCK_COLOR = '#6f6e66';
 const TAGS = ['Travail au ciseau','Dégradés','Rasage traditionnel','Mullet','Burst fade','Taper fade'];
 // Galerie : tes photos dans assets/gallery/ (01.jpg … 17.jpg, dans l'ordre où tu les as fournies)
 // ordre d'affichage des photos livrées (défaut si le CMS est vide)
-const GALLERY_ORDER = [7, 1, 2, 3, 11, 4, 5, 8, 9, 10, 6, 12, 13, 14, 15];
+const GALLERY_ORDER = [11, 1, 2, 3, 7, 4, 5, 8, 9, 10, 6, 12, 13, 14, 15];
 let GALLERY = GALLERY_ORDER.map(n => ({ src: `assets/gallery/${String(n).padStart(2, '0')}.jpg` }));
 
 /* ============================================================
@@ -883,23 +883,19 @@ const App = {
       } catch(e){}
     }
   },
-  // email de CONFIRMATION envoyé AU CLIENT (gratuit via EmailJS)
+  // email de CONFIRMATION envoyé AU CLIENT (via le Worker Cloudflare -> Brevo)
   async emailClient(b){
-    if (!(CFG.EMAILJS_PUBLIC_KEY && CFG.EMAILJS_SERVICE_ID && CFG.EMAILJS_TEMPLATE_CLIENT)) return;
+    if (!CFG.PUSH_ENDPOINT || !b.email) return;
     try {
-      await fetch('https://api.emailjs.com/api/v1.0/email/send', {
+      await fetch(CFG.PUSH_ENDPOINT.replace(/\/$/, '') + '/email', {
         method:'POST', headers:{'Content-Type':'application/json'},
         body: JSON.stringify({
-          service_id: CFG.EMAILJS_SERVICE_ID,
-          template_id: CFG.EMAILJS_TEMPLATE_CLIENT,
-          user_id: CFG.EMAILJS_PUBLIC_KEY,
-          template_params: {
-            to_email: b.email, to_name: b.name, client_name: b.name, client_phone: b.phone || '',
-            service: b.service || '', price: b.price || '',
-            date: this.prettyDate(b.date), slot: b.time,
-            salon: 'Blade Society',
-            adresse: '44 Avenue Paul Kruger, 69100 Villeurbanne',
-          },
+          to_email: b.email,
+          to_name:  b.name,
+          service:  b.service || '',
+          price:    b.price || '',
+          date:     this.prettyDate(b.date),
+          slot:     frTime(b.time),
         }),
       });
     } catch(e){}

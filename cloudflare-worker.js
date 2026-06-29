@@ -6,6 +6,10 @@
      VAPID_PUBLIC   (texte)   = clé publique VAPID
      VAPID_PRIVATE  (secret)  = clé privée VAPID
      VAPID_SUBJECT  (texte)   = mailto:ton-email   (ex: mailto:contact@bladesociety.fr)
+   Email de confirmation client (route POST /email, via Brevo) :
+     BREVO_API_KEY  (secret)  = clé API Brevo (xkeysib-...)
+     SENDER_EMAIL   (texte)   = contact@bladesociety.fr  (expéditeur vérifié dans Brevo)
+     SENDER_NAME    (texte)   = Blade Society
    Binding KV (Settings → Variables → KV Namespace Bindings) :
      Variable name = SUBS
    ===================================================================== */
@@ -76,6 +80,24 @@ export default {
         await env.SUBS.put('content', JSON.stringify(content || {}));
         return reply({ ok: true }, 200, cors);
       }
+
+      /* ====== Email de confirmation au client (via Brevo) ====== */
+      if (url.pathname === '/email' && req.method === 'POST') {
+        if (!env.BREVO_API_KEY || !env.SENDER_EMAIL) return reply({ error: 'email not configured' }, 503, cors);
+        const b = await req.json();
+        if (!b || !b.to_email) return reply({ error: 'no recipient' }, 400, cors);
+        const r = await fetch('https://api.brevo.com/v3/smtp/email', {
+          method: 'POST',
+          headers: { 'api-key': env.BREVO_API_KEY, 'Content-Type': 'application/json', 'accept': 'application/json' },
+          body: JSON.stringify({
+            sender: { name: env.SENDER_NAME || 'Blade Society', email: env.SENDER_EMAIL },
+            to: [{ email: b.to_email, name: b.to_name || '' }],
+            subject: 'Votre rendez-vous chez Blade Society',
+            htmlContent: clientEmailHtml(b),
+          }),
+        });
+        return reply({ ok: r.ok, status: r.status }, 200, cors);
+      }
       if (url.pathname === '/gallery/order' && req.method === 'POST') {
         const { pw, ids } = await req.json();
         if (pw !== env.BARBER_PW) return reply({ error: 'unauthorized' }, 401, cors);
@@ -95,6 +117,75 @@ export default {
 
 function reply(obj, status, cors) {
   return new Response(JSON.stringify(obj), { status, headers: { 'Content-Type': 'application/json', ...cors } });
+}
+
+/* ---------- Email de confirmation client (HTML) ---------- */
+function esc(s) {
+  return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+function clientEmailHtml(b) {
+  const name = esc(b.to_name || '');
+  const service = esc(b.service || '');
+  const price = esc(b.price || '');
+  const date = esc(b.date || '');
+  const slot = esc(b.slot || '');
+  const row = (label, value) => value
+    ? `<tr><td style="padding:8px 0;color:#9b978c;font-size:13px;width:120px">${label}</td><td style="padding:8px 0;color:#1a1a1a;font-size:15px;font-weight:600">${value}</td></tr>`
+    : '';
+  const step = (n, txt) => `<tr>
+    <td valign="top" style="padding:6px 10px 6px 0;width:22px;color:#9b8a5a;font-size:14px;font-weight:700">${n}.</td>
+    <td valign="top" style="padding:6px 0;color:#333;font-size:14px;line-height:1.5">${txt}</td></tr>`;
+  return `<!DOCTYPE html><html><body style="margin:0;padding:0;background:#0a0a0a;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#0a0a0a;padding:28px 0">
+    <tr><td align="center">
+      <table width="100%" cellpadding="0" cellspacing="0" style="max-width:460px;background:#ffffff;border-radius:12px;overflow:hidden;font-family:Arial,Helvetica,sans-serif">
+        <tr><td style="background:#0a0a0a;padding:26px 30px;text-align:center">
+          <div style="color:#cfc7b3;font-size:22px;letter-spacing:.18em;font-weight:700">BLADE SOCIETY</div>
+          <div style="color:#7c776c;font-size:11px;letter-spacing:.22em;margin-top:5px">COIFFEUR · BARBIER</div>
+        </td></tr>
+        <tr><td style="padding:30px 30px 6px">
+          <div style="display:inline-block;background:#eef6ee;color:#2e7d32;font-size:13px;font-weight:700;padding:7px 14px;border-radius:20px">✓ Rendez-vous confirmé</div>
+          <p style="color:#1a1a1a;font-size:16px;margin:20px 0 4px">Bonjour ${name},</p>
+          <p style="color:#555;font-size:14px;line-height:1.5;margin:0 0 14px">Votre rendez-vous est bien enregistré. Voici le récapitulatif&nbsp;:</p>
+        </td></tr>
+        <tr><td style="padding:0 30px">
+          <table width="100%" cellpadding="0" cellspacing="0" style="border-top:1px solid #eee;border-bottom:1px solid #eee">
+            ${row('Prestation', service)}
+            ${row('Tarif', price)}
+            ${row('Date', date)}
+            ${row('Heure', slot)}
+          </table>
+        </td></tr>
+        <tr><td style="padding:22px 30px 0">
+          <p style="color:#555;font-size:14px;line-height:1.5;margin:0">📍 44 Avenue Paul Kruger, 69100 Villeurbanne</p>
+        </td></tr>
+        <tr><td style="padding:18px 30px 6px">
+          <table width="100%" cellpadding="0" cellspacing="0" style="background:#f6f5f2;border-left:3px solid #9b8a5a;border-radius:8px">
+            <tr><td style="padding:18px 20px">
+              <p style="color:#1a1a1a;font-size:15px;font-weight:700;margin:0 0 12px;text-align:center">✨ Salut, c'est Giovany de Blade Society ! ✨</p>
+              <p style="color:#444;font-size:14px;line-height:1.5;margin:0 0 10px">📱 À partir de 10&nbsp;min avant l'heure de ton rendez-vous, tu pourras accéder au salon.</p>
+              <p style="color:#444;font-size:14px;line-height:1.5;margin:0 0 8px">🧭 Tu devras suivre les étapes suivantes&nbsp;:</p>
+              <table width="100%" cellpadding="0" cellspacing="0">
+                ${step(1, '🚦 Rends-toi au niveau du feu rouge, devant le petit portillon gris.')}
+                ${step(2, '📞 Interphone en recherchant «&nbsp;Blade Society&nbsp;».')}
+                ${step(3, '🏢 Interphone à nouveau au bâtiment A, le premier bâtiment sur ta gauche.')}
+                ${step(4, '🛗 Prends l\'ascenseur jusqu\'au 3ᵉ étage, puis ouvre la porte marron en face de toi.')}
+                ${step(5, '💈 Le salon est le deuxième bureau à droite. Toque et entre dans le salon.')}
+              </table>
+              <p style="color:#1a1a1a;font-size:14px;margin:14px 0 0">Merci&nbsp;✌️</p>
+            </td></tr>
+          </table>
+        </td></tr>
+        <tr><td style="padding:16px 30px 24px">
+          <p style="color:#888;font-size:13px;line-height:1.5;margin:0">Un imprévu&nbsp;? Tu peux annuler ton rendez-vous depuis le site, rubrique «&nbsp;Mes rendez-vous&nbsp;».</p>
+        </td></tr>
+        <tr><td style="background:#f6f5f2;padding:16px 30px;text-align:center">
+          <a href="https://bladesociety.fr" style="color:#9b8a5a;font-size:12px;text-decoration:none;letter-spacing:.04em">bladesociety.fr</a>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+  </body></html>`;
 }
 
 /* ---------- Cloudinary (upload signé : le secret reste dans le Worker) ---------- */
