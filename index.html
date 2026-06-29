@@ -489,7 +489,7 @@
       <div class="a1">44 Avenue Paul Kruger</div>
       <div class="a2">69100 Villeurbanne, France</div>
       <div class="hours">
-        <div><span>LUN — SAM</span><span>11h – 20h</span></div>
+        <div><span>MAR — DIM</span><span>11h – 20h</span></div>
         <div><span>DIMANCHE</span><span style="color:var(--faint)">Fermé</span></div>
       </div>
       <a class="btn-chrome" href="#reserver" style="margin-top:34px;font-family:'Space Mono',monospace;font-size:12px;letter-spacing:0.12em;padding:16px 36px">Réserver →</a>
@@ -519,7 +519,7 @@
     </div>
     <div class="foot-col">
       <h4>// Horaires</h4>
-      <div class="foot-hours">Lun – Sam · 11h – 20h<br>Dimanche fermé</div>
+      <div class="foot-hours">Mar – Dim · 11h – 20h<br>Lundi fermé</div>
     </div>
   </div>
   <div class="foot-bot">
@@ -1396,7 +1396,7 @@ const App = {
 
   /* ---------------- calendrier ---------------- */
   todayMidnight(){ const t = new Date(); t.setHours(0,0,0,0); return t; },
-  isOpenDay(d){ return d.getDay() !== 0; },                 // fermé le dimanche
+  isOpenDay(d){ return d.getDay() !== 1; },                 // fermé le lundi (ouvert mardi -> dimanche)
   labelOf(iso){
     const [y,m,d] = iso.split('-').map(Number);
     const dt = new Date(y, m-1, d);
