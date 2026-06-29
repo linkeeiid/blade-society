@@ -870,7 +870,7 @@ const App = {
     }
     const all = this.local(); delete all[key]; localStorage.setItem(LS_KEY, JSON.stringify(all));
   },
-  async refresh(){ const bookings = await this.fetchStore(); this.set({ bookings }); },
+  async refresh(){ const bookings = await this.fetchStore(); this.set({ bookings }); if (this.state.barberAuthed && this.adminPw()) this.loadContacts(); },
 
   /* ---------------- notifications ---------------- */
   prettyDate(iso){
