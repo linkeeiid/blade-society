@@ -100,9 +100,10 @@ export default {
         if (raw) { const map = JSON.parse(raw); delete map[b.key]; await env.SUBS.put('contacts', JSON.stringify(map)); }
         return reply({ ok: true }, 200, cors);
       }
-      if (url.pathname === '/contacts' && req.method === 'POST') {       // lecture (barber, mot de passe admin requis)
+      if (url.pathname === '/contacts' && req.method === 'POST') {       // lecture (barber connecté)
         const { pw } = await req.json();
-        if (pw !== env.BARBER_PW) return reply({ error: 'unauthorized' }, 401, cors);
+        const planningPw = env.PLANNING_PW || 'GiovanyBlade';            // = mot de passe de connexion barber
+        if (pw !== planningPw && pw !== env.BARBER_PW) return reply({ error: 'unauthorized' }, 401, cors);
         const raw = await env.SUBS.get('contacts');
         return reply({ contacts: raw ? JSON.parse(raw) : {} }, 200, cors);
       }

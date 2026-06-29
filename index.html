@@ -870,7 +870,7 @@ const App = {
     }
     const all = this.local(); delete all[key]; localStorage.setItem(LS_KEY, JSON.stringify(all));
   },
-  async refresh(){ const bookings = await this.fetchStore(); this.set({ bookings }); if (this.state.barberAuthed && this.adminPw()) this.loadContacts(); },
+  async refresh(){ const bookings = await this.fetchStore(); this.set({ bookings }); if (this.state.barberAuthed) this.loadContacts(); },
 
   /* ---------------- notifications ---------------- */
   prettyDate(iso){
@@ -1183,14 +1183,13 @@ const App = {
       body: JSON.stringify({ key }) }); } catch(e){}
   },
   async loadContacts(){
-    const pw = this.adminPw();
-    if (!CFG.PUSH_ENDPOINT || !pw) return;
+    if (!CFG.PUSH_ENDPOINT || !this.state.barberAuthed) return;
     try {
       const r = await fetch(this.cmsUrl('/contacts'), { method:'POST', headers:{'Content-Type':'application/json'},
-        body: JSON.stringify({ pw }) });
-      if (!r.ok){ if (r.status === 401) this.set({ barberError:'Mot de passe admin incorrect pour les téléphones.' }); return; }
+        body: JSON.stringify({ pw: CFG.BARBER_PASSWORD }) });
+      if (!r.ok) return;
       const d = await r.json();
-      this.set({ contacts: d.contacts || {}, barberError:'' });
+      this.set({ contacts: d.contacts || {} });
     } catch(e){}
   },
   async addPhoto(input){
@@ -1695,12 +1694,6 @@ const App = {
           ${freeCount ? `<button data-act="blockday">Bloquer toute la journée</button>` : ''}
           ${blockedCount ? `<button data-act="unblockday">Libérer les créneaux bloqués</button>` : ''}
         </div>
-        ${s.contacts ? '' : (s.contactsAsk && !this.adminPw()
-          ? `<div class="contacts-unlock">
-               <input class="bphoto-pw" data-act="adminpw" type="password" value="${esc(s.adminPwInput || '')}" placeholder="MOT DE PASSE ADMIN">
-               <button data-act="loadcontactspw">Voir les téléphones</button>
-             </div>`
-          : `<button class="contacts-btn" data-act="loadcontacts">🔒 Afficher les numéros de téléphone</button>`)}
         ${s.pushOn
           ? `<div class="bpush on">🔔 Notifications activées sur cet appareil</div>`
           : `<button class="bpush" data-act="enablePush">🔔 Activer les notifications sur cet appareil</button>`}
@@ -1755,8 +1748,6 @@ document.getElementById('reserver').addEventListener('click', (e) => {
   else if (act === 'block')   App.blockSlot(t.dataset.key);
   else if (act === 'blockday')   App.blockDay();
   else if (act === 'unblockday') App.unblockDay();
-  else if (act === 'loadcontacts') { if (App.adminPw()) App.loadContacts(); else App.set({ contactsAsk:true }); }
-  else if (act === 'loadcontactspw') App.saveAdminPw();
   else if (act === 'enablePush') App.enablePush();
   else if (act === 'logout')  App.barberLogout();
   else if (act === 'cancel')  App.cancelBooking(t.dataset.key);
