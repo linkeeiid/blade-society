@@ -129,6 +129,7 @@ function clientEmailHtml(b) {
   const price = esc(b.price || '');
   const date = esc(b.date || '');
   const slot = esc(b.slot || '');
+  const manageUrl = b.manage_url ? esc(b.manage_url) : '';
   const row = (label, value) => value
     ? `<tr><td style="padding:8px 0;color:#9b978c;font-size:13px;width:120px">${label}</td><td style="padding:8px 0;color:#1a1a1a;font-size:15px;font-weight:600">${value}</td></tr>`
     : '';
@@ -176,9 +177,12 @@ function clientEmailHtml(b) {
             </td></tr>
           </table>
         </td></tr>
-        <tr><td style="padding:16px 30px 24px">
+        ${manageUrl ? `<tr><td style="padding:18px 30px 26px" align="center">
+          <a href="${manageUrl}" style="display:inline-block;background:#0a0a0a;color:#ffffff;text-decoration:none;font-size:14px;font-weight:700;padding:13px 24px;border-radius:8px">Gérer ou annuler mon rendez-vous</a>
+          <p style="color:#999;font-size:12px;line-height:1.5;margin:10px 0 0">Un imprévu&nbsp;? Annule ou déplace ton rendez-vous en un clic, depuis n'importe quel appareil.</p>
+        </td></tr>` : `<tr><td style="padding:16px 30px 24px">
           <p style="color:#888;font-size:13px;line-height:1.5;margin:0">Un imprévu&nbsp;? Tu peux annuler ton rendez-vous depuis le site, rubrique «&nbsp;Mes rendez-vous&nbsp;».</p>
-        </td></tr>
+        </td></tr>`}
         <tr><td style="background:#f6f5f2;padding:16px 30px;text-align:center">
           <a href="https://bladesociety.fr" style="color:#9b8a5a;font-size:12px;text-decoration:none;letter-spacing:.04em">bladesociety.fr</a>
         </td></tr>
