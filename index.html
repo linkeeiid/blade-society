@@ -814,7 +814,7 @@ const App = {
     selectedDate:'', selectedSlot:null, selectedService:null,
     viewY:0, viewM:0,
     name:'', phone:'', email:'', error:'', submitting:false,
-    bookings:{}, confirmed:null, myBookings:[], manage:null,
+    bookings:{}, confirmed:null, myBookings:[], manage:null, reschedule:null,
     barberOpen:false, barberPw:'', barberAuthed:false, barberError:'', barberDay:'', pushOn:false,
     barberCalY:0, barberCalM:0,
     adminPwInput:'', cmsUploading:false, cmsError:'', textEdit:null, textSaved:false, modifsOpen:false,
@@ -897,8 +897,12 @@ const App = {
   async emailClient(b){
     if (!CFG.PUSH_ENDPOINT || !b.email) return;
     const base = location.href.split('#')[0].split('?')[0];
+    const enc = encodeURIComponent;
+    // le lien embarque les coordonnées DU client (dans SON email) -> déplacement sans re-saisie
     const manageUrl = (b.key && b.tok)
-      ? base + '?rdv=' + encodeURIComponent(b.key) + '&t=' + encodeURIComponent(b.tok)
+      ? base + '?rdv=' + enc(b.key) + '&t=' + enc(b.tok)
+        + (b.email ? '&e=' + enc(b.email) : '')
+        + (b.phone ? '&p=' + enc(b.phone) : '')
       : '';
     try {
       await fetch(CFG.PUSH_ENDPOINT.replace(/\/$/, '') + '/email', {
@@ -911,6 +915,9 @@ const App = {
           date:     this.prettyDate(b.date),
           slot:     frTime(b.time),
           manage_url: manageUrl,
+          old_date: b.oldDate ? this.prettyDate(b.oldDate) : '',
+          old_slot: b.oldTime ? frTime(b.oldTime) : '',
+          cancelled: b.cancelled ? '1' : '',
         }),
       });
     } catch(e){}
@@ -1001,7 +1008,7 @@ const App = {
     this.set({ myBookings: mine, bookings });
   },
   /* ---- gestion du RDV depuis le lien de l'email (?rdv=clé&t=jeton) ---- */
-  async openManage(key, tok){
+  async openManage(key, tok, email, phone){
     try { history.replaceState(null, '', location.href.split('#')[0].split('?')[0]); } catch(e){}
     const bookings = await this.fetchStore();
     const slot = bookings[key];
@@ -1009,7 +1016,7 @@ const App = {
     if (slot.tok && tok && slot.tok !== tok){ this.set({ bookings, manage:{ key, invalid:true } }); this.scrollToRes(); return; }
     const us = key.indexOf('_');
     const date = key.slice(0, us), time = key.slice(us + 1);
-    this.set({ bookings, manage:{ key, tok, slot, date, time } });
+    this.set({ bookings, manage:{ key, tok, slot, date, time, email: email || '', phone: phone || '' } });
     this.scrollToRes();
   },
   scrollToRes(){ try { document.getElementById('reserver').scrollIntoView({ behavior:'smooth', block:'start' }); } catch(e){} },
@@ -1019,18 +1026,58 @@ const App = {
     const mine = (this.state.myBookings || []).filter(b => b.key !== m.key);
     try { localStorage.setItem('bs_my_bookings', JSON.stringify(mine)); } catch(e){}
     const bookings = await this.fetchStore();
+    if (m.slot){                                    // email d'annulation au client + notif barber
+      const ctx = { name:m.slot.name, email:m.email, phone:m.phone, service:m.slot.service, price:m.slot.price,
+        date:m.date, time:m.time, cancelled:true };
+      this.emailClient(ctx);
+      this.pushBarber(ctx);
+    }
     this.set({ bookings, myBookings:mine, manage: Object.assign({}, m, { done:true }) });
   },
-  async moveManaged(){
-    const m = this.state.manage; if (!m || !m.key) return;
-    await this.delStore(m.key);
-    const mine = (this.state.myBookings || []).filter(b => b.key !== m.key);
-    try { localStorage.setItem('bs_my_bookings', JSON.stringify(mine)); } catch(e){}
-    const bookings = await this.fetchStore();
-    const svcNo = m.slot && m.slot.serviceNo;
-    this.set({ bookings, myBookings:mine, manage:null, confirmed:null,
-      selectedDate:m.date, selectedSlot:null, selectedService: svcNo || this.state.selectedService });
+  // passe en mode "déplacement" : on garde l'ancien RDV tant que le nouveau n'est pas validé
+  moveManaged(){
+    const m = this.state.manage; if (!m || !m.key || !m.slot) return;
+    const r = {
+      oldKey: m.key, oldDate: m.date, oldTime: m.time, tok: m.tok,
+      name: m.slot.name, service: m.slot.service, serviceNo: m.slot.serviceNo, price: m.slot.price,
+      email: m.email || '', phone: m.phone || '',
+    };
+    const parts = m.date.split('-').map(Number);   // ouvre le calendrier sur le mois de l'ancien RDV
+    this.set({ reschedule:r, manage:null, confirmed:null, selectedDate:'', selectedSlot:null, error:'',
+      viewY: parts[0], viewM: parts[1] - 1 });
     this.scrollToRes();
+  },
+  cancelReschedule(){ this.set({ reschedule:null, selectedSlot:null, error:'' }); },
+  // valide le nouveau créneau : écrit le nouveau, supprime l'ancien, envoie l'email "modifié"
+  async confirmReschedule(){
+    const r = this.state.reschedule; if (!r) return;
+    if (!this.state.selectedDate){ this.set({ error:'Choisissez d’abord une date.' }); return; }
+    if (!this.state.selectedSlot) return;
+    const newKey = this.state.selectedDate + '_' + this.state.selectedSlot;
+    if (newKey === r.oldKey){ this.set({ error:'C’est déjà votre créneau actuel. Choisissez-en un autre.' }); return; }
+    this.set({ submitting:true, error:'' });
+    const fresh = await this.fetchStore();
+    if (fresh[newKey]){ this.set({ bookings:fresh, submitting:false, selectedSlot:null, error:'Ce créneau vient d’être pris. Choisissez-en un autre.' }); return; }
+    const newTok = Math.random().toString(36).slice(2, 10);
+    const slot = { name:r.name, service:r.service, serviceNo:r.serviceNo, price:r.price, ts:Date.now(), tok:newTok };
+    const ok = await this.putStore(newKey, slot);
+    if (!ok){
+      const after = await this.fetchStore();
+      this.set({ bookings:after, submitting:false, selectedSlot:null, error:'Ce créneau vient d’être pris. Choisissez-en un autre.' });
+      return;
+    }
+    await this.delStore(r.oldKey);                 // libère l'ancien créneau
+    const bookings = await this.fetchStore();
+    const newDate = this.state.selectedDate, newTime = this.state.selectedSlot;
+    const ctx = { name:r.name, email:r.email, phone:r.phone, service:r.service, price:r.price,
+      date:newDate, time:newTime, key:newKey, tok:newTok, moved:true, oldDate:r.oldDate, oldTime:r.oldTime };
+    this.emailClient(ctx);                          // email "rendez-vous modifié" au client
+    this.pushBarber(ctx);                           // notif push au barber (déplacé)
+    let mine = (this.state.myBookings || []).filter(b => b.key !== r.oldKey);
+    mine = mine.concat([{ key:newKey, service:r.service, date:newDate, time:newTime }]);
+    try { localStorage.setItem('bs_my_bookings', JSON.stringify(mine)); } catch(e){}
+    this.set({ bookings, myBookings:mine, reschedule:null, selectedSlot:null, submitting:false,
+      manage:{ done:true, moved:true } });
   },
   renderMyBookings(){
     const today = isoOf(this.todayMidnight());
@@ -1240,11 +1287,16 @@ const App = {
   // envoi de la notification push au barber au moment d'une réservation
   async pushBarber(b){
     if (!CFG.PUSH_ENDPOINT) return;
-    const body = this.prettyDate(b.date) + ' à ' + b.time + ' · ' + (b.service || 'RDV') + '\n' + (b.name || '');
+    const title = b.cancelled ? 'Blade Society — rendez-vous annulé'
+      : b.moved ? 'Blade Society — rendez-vous déplacé'
+      : 'Blade Society — nouvelle réservation';
+    let body = this.prettyDate(b.date) + ' à ' + b.time + ' · ' + (b.service || 'RDV') + '\n' + (b.name || '');
+    if (b.cancelled) body = '❌ ' + body;
+    else if (b.moved && b.oldDate) body = '↪ ' + this.prettyDate(b.oldDate) + ' ' + b.oldTime + '  →  ' + body;
     try {
       await fetch(CFG.PUSH_ENDPOINT.replace(/\/$/,'') + '/notify', {
         method:'POST', headers:{'Content-Type':'application/json'},
-        body: JSON.stringify({ title:'Blade Society — nouvelle réservation', body, url:'./index.html#planning' }),
+        body: JSON.stringify({ title, body, url:'./index.html#planning' }),
       });
     } catch(e){}
   },
@@ -1331,9 +1383,11 @@ const App = {
     if (s.manage){
       const m = s.manage;
       if (m.done) return `<div class="confirmed">
-        <div class="big">Rendez-vous annulé.</div>
-        <p class="l2">Votre rendez-vous a bien été annulé. À bientôt chez Blade Society&nbsp;!</p>
-        <button class="ghost" data-act="managebook">Réserver un nouveau créneau</button>
+        <div class="big">${m.moved ? 'Rendez-vous modifié.' : 'Rendez-vous annulé.'}</div>
+        <p class="l2">${m.moved
+          ? 'Votre rendez-vous a bien été déplacé. Vous allez recevoir un email de confirmation avec le nouveau créneau.'
+          : 'Votre rendez-vous a bien été annulé. À bientôt chez Blade Society&nbsp;!'}</p>
+        <button class="ghost" data-act="managebook">${m.moved ? 'Fermer' : 'Réserver un nouveau créneau'}</button>
       </div>`;
       if (m.missing) return `<div class="confirmed">
         <div class="big">Introuvable</div>
@@ -1415,6 +1469,38 @@ const App = {
       const cls = 'slot' + (taken?' taken':(sel?' sel':''));
       return `<button class="${cls}" data-act="slot" data-time="${t}"${taken?' disabled':''}>${taken?'Réservé':frTime(t)}</button>`;
     }).join('');
+
+    /* --- MODE DÉPLACEMENT (depuis le lien email) : choisir un nouveau créneau, sans re-saisie --- */
+    if (s.reschedule){
+      const r = s.reschedule;
+      let valid = '';
+      if (s.selectedSlot){
+        valid = `<div class="coord">
+          <div class="coord-sum">Nouveau créneau&nbsp;: ${esc((selectedDateLabel || '') + ' · ' + frTime(s.selectedSlot))}</div>
+          ${s.error?`<div class="err">! ${esc(s.error)}</div>`:''}
+          <button class="submit" data-act="validatemove">${s.submitting?'Modification…':'Valider le changement'}</button>
+        </div>`;
+      } else if (s.error){
+        valid = `<div class="err" style="margin-top:4px">! ${esc(s.error)}</div>`;
+      }
+      return `
+        <div class="res-lab">// Déplacer mon rendez-vous</div>
+        <div class="manage-card" style="margin-bottom:20px">
+          <p class="mng-d">Actuel&nbsp;: ${esc(this.prettyDate(r.oldDate) + ' · ' + frTime(r.oldTime))}</p>
+          <p class="mng-s">${esc(r.service || 'Rendez-vous')}${r.price?' · '+esc(r.price):''}</p>
+        </div>
+        <div class="res-lab">// Choisir une nouvelle date</div>
+        ${daysHtml}
+        <div class="res-lab">// Créneaux — ${esc(selectedDateLabel)}</div>
+        <div class="slots">${slotsHtml}</div>
+        <div class="legend">
+          <span><i style="border:var(--bw) solid var(--line)"></i>Libre</span>
+          <span><i style="background:var(--chrome)"></i>Choisi</span>
+          <span><i style="background:var(--panel2);border:1px solid #2a2a2a"></i>Réservé</span>
+        </div>
+        ${valid}
+        <button class="ghost" data-act="cancelmove" style="margin-top:16px;width:100%">Garder mon rendez-vous actuel</button>`;
+    }
 
     /* --- sélecteur de prestation (toujours visible) --- */
     const prestaHtml = `<div class="presta">` + SERVICES.map(sv => `
@@ -1555,6 +1641,8 @@ document.getElementById('reserver').addEventListener('click', (e) => {
   else if (act === 'managecancel') App.cancelManaged();
   else if (act === 'managemove')   App.moveManaged();
   else if (act === 'managebook')   App.set({ manage:null, confirmed:null });
+  else if (act === 'validatemove') App.confirmReschedule();
+  else if (act === 'cancelmove')   App.cancelReschedule();
   else if (act === 'refresh') App.refresh();
   else if (act === 'bprev')   App.barberShiftDay(-1);
   else if (act === 'bnext')   App.barberShiftDay(1);
@@ -1618,7 +1706,7 @@ App.refresh();
 try {
   const qs = new URLSearchParams(location.search);
   const rdv = qs.get('rdv');
-  if (rdv) App.openManage(rdv, qs.get('t') || '');
+  if (rdv) App.openManage(rdv, qs.get('t') || '', qs.get('e') || '', qs.get('p') || '');
 } catch(e){}
 
 /* lien "Planning" du menu */

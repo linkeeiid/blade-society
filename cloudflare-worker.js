@@ -92,7 +92,9 @@ export default {
           body: JSON.stringify({
             sender: { name: env.SENDER_NAME || 'Blade Society', email: env.SENDER_EMAIL },
             to: [{ email: b.to_email, name: b.to_name || '' }],
-            subject: 'Votre rendez-vous chez Blade Society',
+            subject: b.cancelled ? 'Votre rendez-vous a été annulé — Blade Society'
+              : (b.old_date && b.old_slot) ? 'Votre rendez-vous a été modifié — Blade Society'
+              : 'Votre rendez-vous chez Blade Society',
             htmlContent: clientEmailHtml(b),
           }),
         });
@@ -130,12 +132,51 @@ function clientEmailHtml(b) {
   const date = esc(b.date || '');
   const slot = esc(b.slot || '');
   const manageUrl = b.manage_url ? esc(b.manage_url) : '';
+  const oldDate = esc(b.old_date || '');
+  const oldSlot = esc(b.old_slot || '');
+  const isMod = !!(b.old_date && b.old_slot);
   const row = (label, value) => value
     ? `<tr><td style="padding:8px 0;color:#9b978c;font-size:13px;width:120px">${label}</td><td style="padding:8px 0;color:#1a1a1a;font-size:15px;font-weight:600">${value}</td></tr>`
     : '';
   const step = (n, txt) => `<tr>
     <td valign="top" style="padding:6px 10px 6px 0;width:22px;color:#9b8a5a;font-size:14px;font-weight:700">${n}.</td>
     <td valign="top" style="padding:6px 0;color:#333;font-size:14px;line-height:1.5">${txt}</td></tr>`;
+
+  /* ----- Email d'ANNULATION (sans étapes d'accès ni bouton de gestion) ----- */
+  if (b.cancelled) return `<!DOCTYPE html><html><body style="margin:0;padding:0;background:#0a0a0a;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#0a0a0a;padding:28px 0">
+    <tr><td align="center">
+      <table width="100%" cellpadding="0" cellspacing="0" style="max-width:460px;background:#ffffff;border-radius:12px;overflow:hidden;font-family:Arial,Helvetica,sans-serif">
+        <tr><td style="background:#0a0a0a;padding:26px 30px;text-align:center">
+          <div style="color:#cfc7b3;font-size:22px;letter-spacing:.18em;font-weight:700">BLADE SOCIETY</div>
+          <div style="color:#7c776c;font-size:11px;letter-spacing:.22em;margin-top:5px">COIFFEUR · BARBIER</div>
+        </td></tr>
+        <tr><td style="padding:30px 30px 6px">
+          <div style="display:inline-block;background:#fdecec;color:#b23b3b;font-size:13px;font-weight:700;padding:7px 14px;border-radius:20px">✕ Rendez-vous annulé</div>
+          <p style="color:#1a1a1a;font-size:16px;margin:20px 0 4px">Bonjour ${name},</p>
+          <p style="color:#555;font-size:14px;line-height:1.5;margin:0 0 14px">Votre rendez-vous a bien été annulé. Voici le créneau qui a été libéré&nbsp;:</p>
+        </td></tr>
+        <tr><td style="padding:0 30px">
+          <table width="100%" cellpadding="0" cellspacing="0" style="border-top:1px solid #eee;border-bottom:1px solid #eee">
+            ${row('Prestation', service)}
+            ${row('Date', date)}
+            ${row('Heure', slot)}
+          </table>
+        </td></tr>
+        <tr><td style="padding:22px 30px 6px">
+          <p style="color:#555;font-size:14px;line-height:1.5;margin:0">Au plaisir de vous revoir chez Blade Society&nbsp;! Vous pouvez reprendre un rendez-vous quand vous le souhaitez.</p>
+        </td></tr>
+        <tr><td style="padding:18px 30px 26px" align="center">
+          <a href="https://bladesociety.fr" style="display:inline-block;background:#0a0a0a;color:#ffffff;text-decoration:none;font-size:14px;font-weight:700;padding:13px 24px;border-radius:8px">Reprendre un rendez-vous</a>
+        </td></tr>
+        <tr><td style="background:#f6f5f2;padding:16px 30px;text-align:center">
+          <a href="https://bladesociety.fr" style="color:#9b8a5a;font-size:12px;text-decoration:none;letter-spacing:.04em">bladesociety.fr</a>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+  </body></html>`;
+
   return `<!DOCTYPE html><html><body style="margin:0;padding:0;background:#0a0a0a;">
   <table width="100%" cellpadding="0" cellspacing="0" style="background:#0a0a0a;padding:28px 0">
     <tr><td align="center">
@@ -145,9 +186,10 @@ function clientEmailHtml(b) {
           <div style="color:#7c776c;font-size:11px;letter-spacing:.22em;margin-top:5px">COIFFEUR · BARBIER</div>
         </td></tr>
         <tr><td style="padding:30px 30px 6px">
-          <div style="display:inline-block;background:#eef6ee;color:#2e7d32;font-size:13px;font-weight:700;padding:7px 14px;border-radius:20px">✓ Rendez-vous confirmé</div>
+          <div style="display:inline-block;background:${isMod ? '#fff4e6' : '#eef6ee'};color:${isMod ? '#b26a00' : '#2e7d32'};font-size:13px;font-weight:700;padding:7px 14px;border-radius:20px">${isMod ? '✓ Rendez-vous modifié' : '✓ Rendez-vous confirmé'}</div>
           <p style="color:#1a1a1a;font-size:16px;margin:20px 0 4px">Bonjour ${name},</p>
-          <p style="color:#555;font-size:14px;line-height:1.5;margin:0 0 14px">Votre rendez-vous est bien enregistré. Voici le récapitulatif&nbsp;:</p>
+          <p style="color:#555;font-size:14px;line-height:1.5;margin:0 0 ${isMod ? '8' : '14'}px">${isMod ? 'Votre rendez-vous a bien été déplacé. Voici votre nouveau créneau&nbsp;:' : 'Votre rendez-vous est bien enregistré. Voici le récapitulatif&nbsp;:'}</p>
+          ${isMod ? `<p style="color:#999;font-size:13px;line-height:1.5;margin:0 0 14px">Ancien créneau&nbsp;: <span style="text-decoration:line-through">${oldDate} · ${oldSlot}</span></p>` : ''}
         </td></tr>
         <tr><td style="padding:0 30px">
           <table width="100%" cellpadding="0" cellspacing="0" style="border-top:1px solid #eee;border-bottom:1px solid #eee">
