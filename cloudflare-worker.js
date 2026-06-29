@@ -83,6 +83,30 @@ export default {
         return reply({ ok: true }, 200, cors);
       }
 
+      /* ====== Coordonnées privées du client (tél) — lisibles seulement par le barber ====== */
+      if (url.pathname === '/contact' && req.method === 'POST') {        // enregistre (à la réservation)
+        const b = await req.json();
+        if (!b || !b.key) return reply({ error: 'bad' }, 400, cors);
+        const raw = await env.SUBS.get('contacts');
+        const map = raw ? JSON.parse(raw) : {};
+        map[b.key] = { phone: b.phone || '', name: b.name || '' };
+        await env.SUBS.put('contacts', JSON.stringify(map));
+        return reply({ ok: true }, 200, cors);
+      }
+      if (url.pathname === '/contact/remove' && req.method === 'POST') { // supprime (à l'annulation)
+        const b = await req.json();
+        if (!b || !b.key) return reply({ error: 'bad' }, 400, cors);
+        const raw = await env.SUBS.get('contacts');
+        if (raw) { const map = JSON.parse(raw); delete map[b.key]; await env.SUBS.put('contacts', JSON.stringify(map)); }
+        return reply({ ok: true }, 200, cors);
+      }
+      if (url.pathname === '/contacts' && req.method === 'POST') {       // lecture (barber, mot de passe admin requis)
+        const { pw } = await req.json();
+        if (pw !== env.BARBER_PW) return reply({ error: 'unauthorized' }, 401, cors);
+        const raw = await env.SUBS.get('contacts');
+        return reply({ contacts: raw ? JSON.parse(raw) : {} }, 200, cors);
+      }
+
       /* ====== Email de confirmation au client (via Brevo) ====== */
       if (url.pathname === '/email' && req.method === 'POST') {
         if (!env.BREVO_API_KEY || !env.SENDER_EMAIL) return reply({ error: 'email not configured' }, 503, cors);

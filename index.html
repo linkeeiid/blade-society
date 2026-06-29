@@ -285,6 +285,13 @@
   .bday-acts{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px}
   .bday-acts button{flex:1;min-width:160px;background:none;border:var(--bw) solid var(--line);color:var(--ink);padding:11px 14px;border-radius:var(--radius);font-family:'Space Mono',monospace;font-size:10.5px;letter-spacing:0.08em;text-transform:uppercase;cursor:pointer;transition:all .25s}
   .bday-acts button:hover{background:var(--ink);color:#0d0d0d}
+  .contacts-btn{display:block;width:100%;margin-bottom:14px;background:none;border:1px dashed var(--line);color:var(--faint);padding:10px;border-radius:var(--radius);font-family:'Space Mono',monospace;font-size:10.5px;letter-spacing:0.06em;text-transform:uppercase;cursor:pointer;transition:all .25s}
+  .contacts-btn:hover{border-color:var(--chrome);color:var(--ink)}
+  .contacts-unlock{display:flex;gap:8px;margin-bottom:14px}
+  .contacts-unlock input{flex:1}
+  .contacts-unlock button{background:var(--chrome);color:#0d0d0d;border:none;border-radius:var(--radius);padding:0 16px;font-family:'Space Mono',monospace;font-size:10.5px;letter-spacing:0.06em;text-transform:uppercase;font-weight:700;cursor:pointer}
+  .nm-tel{display:inline-block;margin-top:3px;color:var(--chrome);font-family:'Space Mono',monospace;font-size:12px;text-decoration:none;letter-spacing:0.03em}
+  .nm-tel:hover{text-decoration:underline}
   .bpush{display:block;width:100%;margin-bottom:14px;padding:13px;border-radius:var(--radius);background:var(--chrome);color:#0d0d0d;border:none;font-family:'Space Mono',monospace;font-size:12px;letter-spacing:0.08em;text-transform:uppercase;font-weight:700;cursor:pointer;transition:transform .25s}
   .bpush:hover{transform:translateY(-2px)}
   .bpush.on{background:none;border:var(--bw) solid var(--line);color:var(--mut);font-weight:400;cursor:default}
@@ -823,6 +830,7 @@ const App = {
     barberOpen:false, barberPw:'', barberAuthed:false, barberError:'', barberDay:'', pushOn:false,
     barberCalY:0, barberCalM:0,
     adminPwInput:'', cmsUploading:false, cmsError:'', textEdit:null, textSaved:false, modifsOpen:false,
+    contacts:null, contactsAsk:false,
   },
   MONTHS_AHEAD: 12,   // nombre de mois consultables vers l'avenir
 
@@ -993,6 +1001,7 @@ const App = {
     this.pushBarber(full);    // notification push (app) au barber (en arrière-plan)
     this.emailClient(full);   // email de confirmation au client (en arrière-plan)
     this.smsClient(full);     // SMS de confirmation au client (en arrière-plan)
+    this.saveContact(full);   // tél du client (privé, lisible seulement par le barber)
     try { rlt.push(now); localStorage.setItem('bs_bk_times', JSON.stringify(rlt)); } catch(e){}
     const mine = (this.state.myBookings || []).concat([{ key, service: full.service, date: full.date, time: full.time }]);
     try { localStorage.setItem('bs_my_bookings', JSON.stringify(mine)); } catch(e){}
@@ -1029,6 +1038,7 @@ const App = {
   // le client annule lui-même un de ses rendez-vous (pris sur cet appareil)
   async cancelMine(key){
     await this.delStore(key);
+    this.removeContact(key);
     const mine = (this.state.myBookings || []).filter(b => b.key !== key);
     try { localStorage.setItem('bs_my_bookings', JSON.stringify(mine)); } catch(e){}
     const bookings = await this.fetchStore();
@@ -1050,6 +1060,7 @@ const App = {
   async cancelManaged(){
     const m = this.state.manage; if (!m || !m.key) return;
     await this.delStore(m.key);
+    this.removeContact(m.key);
     const mine = (this.state.myBookings || []).filter(b => b.key !== m.key);
     try { localStorage.setItem('bs_my_bookings', JSON.stringify(mine)); } catch(e){}
     const bookings = await this.fetchStore();
@@ -1094,6 +1105,8 @@ const App = {
       return;
     }
     await this.delStore(r.oldKey);                 // libère l'ancien créneau
+    this.removeContact(r.oldKey);
+    this.saveContact({ key:newKey, phone:r.phone, name:r.name });   // tél reporté sur le nouveau créneau
     const bookings = await this.fetchStore();
     const newDate = this.state.selectedDate, newTime = this.state.selectedSlot;
     const ctx = { name:r.name, email:r.email, phone:r.phone, service:r.service, price:r.price,
@@ -1131,6 +1144,7 @@ const App = {
       this.set({ barberAuthed:true, barberError:'', barberPw:'' });
       this.refreshNav();
       this.refresh();
+      this.loadContacts();
     } else {
       this.set({ barberError:'Mot de passe incorrect.' });
     }
@@ -1152,10 +1166,33 @@ const App = {
     const pw = (this.state.adminPwInput || '').trim();
     if (!pw) return;
     try { localStorage.setItem('bs_admin_pw', pw); } catch(e){}
-    this.set({ adminPwInput:'', cmsError:'' });
+    this.set({ adminPwInput:'', cmsError:'', contactsAsk:false });
+    this.loadContacts();
   },
   clearAdminPw(){ try { localStorage.removeItem('bs_admin_pw'); } catch(e){} },
   cmsUrl(p){ return CFG.PUSH_ENDPOINT.replace(/\/$/,'') + p; },
+  /* ---- contact privé du client (tél) : stocké côté Worker, lisible seulement par le barber ---- */
+  async saveContact(b){
+    if (!CFG.PUSH_ENDPOINT || !b.key || !b.phone) return;
+    try { await fetch(this.cmsUrl('/contact'), { method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ key:b.key, phone:b.phone, name:b.name || '' }) }); } catch(e){}
+  },
+  removeContact(key){
+    if (!CFG.PUSH_ENDPOINT || !key) return;
+    try { fetch(this.cmsUrl('/contact/remove'), { method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ key }) }); } catch(e){}
+  },
+  async loadContacts(){
+    const pw = this.adminPw();
+    if (!CFG.PUSH_ENDPOINT || !pw) return;
+    try {
+      const r = await fetch(this.cmsUrl('/contacts'), { method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ pw }) });
+      if (!r.ok){ if (r.status === 401) this.set({ barberError:'Mot de passe admin incorrect pour les téléphones.' }); return; }
+      const d = await r.json();
+      this.set({ contacts: d.contacts || {}, barberError:'' });
+    } catch(e){}
+  },
   async addPhoto(input){
     const file = input.files && input.files[0];
     if (!file) return;
@@ -1281,6 +1318,7 @@ const App = {
   // ouvre le planning et défile jusqu'à lui (depuis le menu ou une notification)
   openPlanning(){
     this.set({ barberOpen:true });
+    this.loadContacts();
     setTimeout(() => {
       const el = document.getElementById('barberPane') || document.getElementById('reserver');
       if (el) el.scrollIntoView({ behavior:'smooth', block:'start' });
@@ -1329,6 +1367,7 @@ const App = {
   },
   async cancelBooking(key){
     await this.delStore(key);
+    this.removeContact(key);
     const bookings = await this.fetchStore();
     this.set({ bookings });
   },
@@ -1615,11 +1654,13 @@ const App = {
         }
         if (sl){
           const col = SERVICE_COLORS[sl.serviceNo] || '#9a9ca2';
+          const ph = (s.contacts && s.contacts[key]) ? (s.contacts[key].phone || '') : '';
           return `<div class="aslot">
             <span class="t">${frTime(t)}</span><span class="bar" style="background:${col}"></span>
             <div class="info">
               <div class="sv" style="color:${col}">${esc(sl.service || 'RDV')}${sl.price ? ' · ' + esc(sl.price) : ''}</div>
               <div class="nm">${esc(sl.name || 'Client')}</div>
+              ${ph ? `<a class="nm-tel" href="tel:${esc(ph)}">📞 ${esc(ph)}</a>` : ''}
             </div>
             <button data-act="cancel" data-key="${esc(key)}">Libérer</button>
           </div>`;
@@ -1654,6 +1695,12 @@ const App = {
           ${freeCount ? `<button data-act="blockday">Bloquer toute la journée</button>` : ''}
           ${blockedCount ? `<button data-act="unblockday">Libérer les créneaux bloqués</button>` : ''}
         </div>
+        ${s.contacts ? '' : (s.contactsAsk && !this.adminPw()
+          ? `<div class="contacts-unlock">
+               <input class="bphoto-pw" data-act="adminpw" type="password" value="${esc(s.adminPwInput || '')}" placeholder="MOT DE PASSE ADMIN">
+               <button data-act="loadcontactspw">Voir les téléphones</button>
+             </div>`
+          : `<button class="contacts-btn" data-act="loadcontacts">🔒 Afficher les numéros de téléphone</button>`)}
         ${s.pushOn
           ? `<div class="bpush on">🔔 Notifications activées sur cet appareil</div>`
           : `<button class="bpush" data-act="enablePush">🔔 Activer les notifications sur cet appareil</button>`}
@@ -1708,6 +1755,8 @@ document.getElementById('reserver').addEventListener('click', (e) => {
   else if (act === 'block')   App.blockSlot(t.dataset.key);
   else if (act === 'blockday')   App.blockDay();
   else if (act === 'unblockday') App.unblockDay();
+  else if (act === 'loadcontacts') { if (App.adminPw()) App.loadContacts(); else App.set({ contactsAsk:true }); }
+  else if (act === 'loadcontactspw') App.saveAdminPw();
   else if (act === 'enablePush') App.enablePush();
   else if (act === 'logout')  App.barberLogout();
   else if (act === 'cancel')  App.cancelBooking(t.dataset.key);
@@ -1754,6 +1803,7 @@ try { if (localStorage.getItem('bs_push') === '1') App.state.pushOn = true; } ca
 try { App.state.myBookings = JSON.parse(localStorage.getItem('bs_my_bookings') || '[]'); } catch(e){}  // RDV du client (cet appareil)
 App.refreshNav();
 App.refresh();
+if (App.state.barberAuthed) App.loadContacts();   // recharge les tél si barber déjà connecté
 
 /* arrivée depuis le lien "Gérer mon rendez-vous" de l'email (?rdv=clé&t=jeton) */
 try {
