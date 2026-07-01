@@ -274,6 +274,9 @@ function clientEmailHtml(b) {
             </td></tr>
           </table>
         </td></tr>
+        <tr><td style="padding:12px 30px 0" align="center">
+          <p style="color:#555;font-size:13px;line-height:1.5;margin:0">Un imprévu ou une question&nbsp;? Appelez Giovany au <a href="tel:+33644164499" style="color:#9b8a5a;font-weight:700;text-decoration:none">06&nbsp;44&nbsp;16&nbsp;44&nbsp;99</a></p>
+        </td></tr>
         ${manageUrl ? `<tr><td style="padding:18px 30px 26px" align="center">
           <a href="${manageUrl}" style="display:inline-block;background:#0a0a0a;color:#ffffff;text-decoration:none;font-size:14px;font-weight:700;padding:13px 24px;border-radius:8px">Gérer ou annuler mon rendez-vous</a>
           <p style="color:#999;font-size:12px;line-height:1.5;margin:10px 0 0">Un imprévu&nbsp;? Annule ou déplace ton rendez-vous en un clic, depuis n'importe quel appareil.</p>
@@ -312,7 +315,8 @@ function clientEmailText(b) {
   if (date) L.push('Date : ' + date);
   if (slot) L.push('Heure : ' + slot);
   L.push('', 'Adresse : 44 Avenue Paul Kruger, 69100 Villeurbanne',
-    'Accès (10 min avant) : feu rouge / portillon gris, interphone « Blade Society », bâtiment A, ascenseur 3e étage, porte marron, 2e bureau à droite.');
+    'Accès (10 min avant) : feu rouge / portillon gris, interphone « Blade Society », bâtiment A, ascenseur 3e étage, porte marron, 2e bureau à droite.',
+    'Un imprévu ou une question ? Appelez Giovany au 06 44 16 44 99.');
   if (b.manage_url) L.push('', 'Gérer, déplacer ou annuler votre rendez-vous : ' + b.manage_url);
   L.push('', 'À très vite, Giovany — Blade Society', 'https://bladesociety.fr');
   return L.join('\n');
