@@ -12,7 +12,7 @@
      SENDER_NAME    (texte)   = Blade Society
    SMS de confirmation client (route POST /sms, via Brevo, payant) :
      SMS_SENDER     (texte)   = nom expéditeur SMS, 11 caractères max (ex: BladeSoc)
-   Rappel automatique ~1h avant le RDV (Cron Trigger) :
+   Rappel automatique ~4h avant le RDV (Cron Trigger) :
      FIREBASE_DB_URL (texte)  = https://blade-society-default-rtdb.europe-west1.firebasedatabase.app
      SITE_URL        (texte, optionnel) = https://bladesociety.fr
      + Cron Trigger à ajouter (Settings -> Triggers -> Cron) : toutes les 10 min
@@ -157,7 +157,7 @@ export default {
     }
   },
 
-  /* ====== Rappel automatique ~1h avant le RDV (déclenché par le Cron Trigger) ====== */
+  /* ====== Rappel automatique ~4h avant le RDV (déclenché par le Cron Trigger) ====== */
   async scheduled(event, env, ctx) {
     ctx.waitUntil(sendReminders(env));
   },
@@ -247,7 +247,7 @@ function clientEmailHtml(b) {
         <tr><td style="padding:30px 30px 6px">
           <div style="display:inline-block;background:${(isMod || isReminder) ? '#fff4e6' : '#eef6ee'};color:${(isMod || isReminder) ? '#b26a00' : '#2e7d32'};font-size:13px;font-weight:700;padding:7px 14px;border-radius:20px">${isReminder ? '⏰ Rappel de rendez-vous' : isMod ? '✓ Rendez-vous modifié' : '✓ Rendez-vous confirmé'}</div>
           <p style="color:#1a1a1a;font-size:16px;margin:20px 0 4px">Bonjour ${name},</p>
-          <p style="color:#555;font-size:14px;line-height:1.5;margin:0 0 ${isMod ? '8' : '14'}px">${isReminder ? 'C\'est bientôt l\'heure&nbsp;! Votre rendez-vous est dans environ 1&nbsp;heure&nbsp;:' : isMod ? 'Votre rendez-vous a bien été déplacé. Voici votre nouveau créneau&nbsp;:' : 'Votre rendez-vous est bien enregistré. Voici le récapitulatif&nbsp;:'}</p>
+          <p style="color:#555;font-size:14px;line-height:1.5;margin:0 0 ${isMod ? '8' : '14'}px">${isReminder ? 'Petit rappel&nbsp;: votre rendez-vous est dans environ 4&nbsp;heures&nbsp;:' : isMod ? 'Votre rendez-vous a bien été déplacé. Voici votre nouveau créneau&nbsp;:' : 'Votre rendez-vous est bien enregistré. Voici le récapitulatif&nbsp;:'}</p>
           ${isMod ? `<p style="color:#999;font-size:13px;line-height:1.5;margin:0 0 14px">Ancien créneau&nbsp;: <span style="text-decoration:line-through">${oldDate} · ${oldSlot}</span></p>` : ''}
         </td></tr>
         <tr><td style="padding:0 30px">
@@ -313,7 +313,7 @@ function clientEmailText(b) {
     return L.join('\n');
   }
   const isMod = b.old_date && b.old_slot;
-  L.push('Bonjour ' + name + ',', b.reminder ? 'C\'est bientôt l\'heure ! Votre rendez-vous est dans environ 1 heure.' : isMod ? 'Votre rendez-vous a bien été modifié.' : 'Votre rendez-vous est confirmé.');
+  L.push('Bonjour ' + name + ',', b.reminder ? 'Petit rappel : votre rendez-vous est dans environ 4 heures.' : isMod ? 'Votre rendez-vous a bien été modifié.' : 'Votre rendez-vous est confirmé.');
   if (isMod) L.push('Ancien créneau : ' + b.old_date + ' · ' + b.old_slot);
   if (service) L.push('Prestation : ' + service + (price ? ' (' + price + ')' : ''));
   if (date) L.push('Date : ' + date);
@@ -328,7 +328,7 @@ function clientEmailText(b) {
 
 /* ---------- Envoi Brevo (partagé : route /email + rappel planifié) ---------- */
 function emailSubject(b) {
-  if (b.reminder) return 'Rappel : votre rendez-vous dans 1h — Blade Society';
+  if (b.reminder) return 'Rappel : votre rendez-vous dans 4h — Blade Society';
   if (b.cancelled) return 'Votre rendez-vous a été annulé — Blade Society';
   if (b.old_date && b.old_slot) return 'Votre rendez-vous a été modifié — Blade Society';
   return 'Votre rendez-vous chez Blade Society';
@@ -390,7 +390,7 @@ async function sendReminders(env) {
     const tp = time.split(':');
     const apptMin = parseInt(tp[0], 10) * 60 + parseInt(tp[1], 10);
     const diff = apptMin - now.minutes;
-    if (diff < 50 || diff > 70) continue;                  // fenêtre ~1h avant
+    if (diff < 230 || diff > 250) continue;                // fenêtre ~4h avant
     if (reminded[key]) continue;                           // déjà rappelé
     const c = contacts[key];
     if (!c || !c.email) continue;                          // pas d'email connu -> pas de rappel

@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Blade Society</title>
+<meta name="robots" content="noindex">
+<link rel="icon" href="assets/logo-fondu.png">
+<!-- Redirection immédiate vers l'accueil (filet de sécurité pour toute URL inconnue) -->
+<script>
+  var t = location.pathname.replace(/^\/+/, '');
+  // si un lien "gérer mon rendez-vous" a été ouvert avec un mauvais chemin, on garde les paramètres
+  location.replace('/' + (location.search || '') + (location.hash || ''));
+</script>
+<meta http-equiv="refresh" content="0; url=/">
+<style>
+  body{margin:0;height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;
+       background:#0a0a0a;color:#eceae3;font-family:'Segoe UI',Arial,sans-serif;text-align:center;padding:24px}
+  img{width:64px;height:64px;object-fit:contain;margin-bottom:20px;opacity:.9}
+  h1{font-size:20px;letter-spacing:.14em;margin:0 0 8px}
+  p{color:#8a877e;font-size:14px;margin:0 0 22px}
+  a{display:inline-block;background:#cfc7b3;color:#0d0d0d;text-decoration:none;font-weight:700;
+    font-size:12px;letter-spacing:.1em;text-transform:uppercase;padding:14px 28px;border-radius:8px}
+</style>
+</head>
+<body>
+  <img src="assets/logo-fondu.png" alt="Blade Society">
+  <h1>BLADE SOCIETY</h1>
+  <p>Un instant, on vous ramène sur le site…</p>
+  <a href="/">Retour à l'accueil</a>
+</body>
+</html>

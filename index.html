@@ -16,7 +16,40 @@
 <meta name="twitter:title" content="Blade Society — Barbier privé · Villeurbanne">
 <meta name="twitter:description" content="Barbershop privé sur rendez-vous. Réservez en ligne.">
 <meta name="twitter:image" content="https://bladesociety.fr/assets/og.jpg">
-<link rel="icon" href="assets/logo-fondu.png">
+<link rel="icon" href="assets/logo-fondu.png" sizes="any">
+<link rel="icon" type="image/png" sizes="512x512" href="assets/icon-512.png">
+<link rel="icon" type="image/png" sizes="192x192" href="assets/icon-192.png">
+<link rel="shortcut icon" href="assets/logo-fondu.png">
+<!-- Données structurées : aide Google à afficher le nom + le logo du salon -->
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "HairSalon",
+  "name": "Blade Society",
+  "image": "https://bladesociety.fr/assets/og.jpg",
+  "logo": "https://bladesociety.fr/assets/icon-512.png",
+  "url": "https://bladesociety.fr",
+  "telephone": "+33644164499",
+  "priceRange": "€€",
+  "address": {
+    "@type": "PostalAddress",
+    "streetAddress": "44 Avenue Paul Kruger",
+    "postalCode": "69100",
+    "addressLocality": "Villeurbanne",
+    "addressCountry": "FR"
+  },
+  "openingHoursSpecification": [{
+    "@type": "OpeningHoursSpecification",
+    "dayOfWeek": ["Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"],
+    "opens": "11:00",
+    "closes": "20:00"
+  }],
+  "sameAs": [
+    "https://www.instagram.com/blade__society/",
+    "https://www.snapchat.com/add/giiovany.cx"
+  ]
+}
+</script>
 <!-- PWA : app installable -->
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#0a0a0a">
@@ -157,6 +190,7 @@
   /* ============================ GALERIE ============================ */
   #galerie h2{font-size:clamp(44px,7vw,92px);margin-bottom:clamp(36px,5vw,56px)}
   #galerie::before{content:"";position:absolute;inset:0;z-index:0;background:linear-gradient(180deg,rgba(10,10,10,0.9),rgba(10,10,10,0.8)),url('assets/salon2-ia.jpg') center center/cover no-repeat}
+  @media(max-width:780px){#galerie::before{background:linear-gradient(180deg,rgba(10,10,10,0.62),rgba(10,10,10,0.5)),url('assets/salon2-ia.jpg') center center/cover no-repeat}}
   #galerie > .reveal{position:relative;z-index:1}
   .gallery{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:0;border-top:var(--bw) solid var(--line);border-left:var(--bw) solid var(--line)}
   .gcell{position:relative;aspect-ratio:4/5;border-right:var(--bw) solid var(--line);border-bottom:var(--bw) solid var(--line);overflow:hidden;cursor:pointer;background:linear-gradient(150deg,#1a1a1a,#0a0a0a)}
@@ -220,6 +254,7 @@
   .slot{padding:15px 0;border-right:var(--bw) solid var(--line);border-bottom:var(--bw) solid var(--line);font-family:'Space Mono',monospace;font-size:13px;letter-spacing:0.03em;text-align:center;transition:all .2s;background:transparent;color:var(--ink);cursor:pointer}
   .slot.sel{background:var(--chrome);color:#0d0d0d;font-weight:700}
   .slot.taken{background:var(--panel2);color:#56554f;border-color:#222;cursor:not-allowed;text-decoration:line-through}
+  .no-slot{border-top:var(--bw) solid var(--line);padding:22px 4px;margin-bottom:26px;font-family:'Space Mono',monospace;font-size:12px;color:var(--faint);text-align:center}
   .legend{display:flex;gap:22px;flex-wrap:wrap;margin-bottom:28px;font-family:'Space Mono',monospace;font-size:10.5px;color:var(--faint)}
   .legend span{display:flex;align-items:center;gap:8px}
   .legend i{width:11px;height:11px;display:inline-block;font-style:normal}
@@ -1376,9 +1411,16 @@ const App = {
     this.set({ bookings });
   },
   // bloque tous les créneaux LIBRES de la journée affichée (ne touche pas aux RDV clients)
-  async blockDay(){
+  async blockDay(){ return this.blockRange(null); },
+  async blockHalf(part){ return this.blockRange(part); },   // 'am' = matin (<14h), 'pm' = après-midi (>=14h)
+  async blockRange(part){
     const day = this.state.barberDay; if (!day) return;
-    const free = TIMES.filter(t => !this.state.bookings[day + '_' + t]);
+    const free = TIMES.filter(t => {
+      if (this.state.bookings[day + '_' + t]) return false;
+      if (part === 'am') return parseInt(t, 10) < 14;
+      if (part === 'pm') return parseInt(t, 10) >= 14;
+      return true;
+    });
     if (!free.length) return;
     await Promise.all(free.map(t => this.putStore(day + '_' + t, { name:'', service:'Bloqué', serviceNo:'X', blocked:true, ts:Date.now() })));
     const bookings = await this.fetchStore();
@@ -1520,7 +1562,8 @@ const App = {
     for (let day=1; day<=nbDays; day++){
       const dt = new Date(s.viewY, s.viewM, day);
       const iso = isoOf(dt);
-      const off = dt < today || !this.isOpenDay(dt);
+      const fullyTaken = TIMES.every(t => !!s.bookings[iso + '_' + t]);   // journée pleine ou bloquée -> grisée
+      const off = dt < today || !this.isOpenDay(dt) || fullyTaken;
       const cls = 'cal-cell'
         + (off ? ' off' : '')
         + (iso===s.selectedDate ? ' sel' : '')
@@ -1545,13 +1588,13 @@ const App = {
 
     const selectedDateLabel = s.selectedDate ? this.labelOf(s.selectedDate) : '';
 
-    const slotsHtml = TIMES.map(t => {
-      const key = s.selectedDate + '_' + t;
-      const taken = !!s.bookings[key];
-      const sel = s.selectedSlot === t;
-      const cls = 'slot' + (taken?' taken':(sel?' sel':''));
-      return `<button class="${cls}" data-act="slot" data-time="${t}"${taken?' disabled':''}>${taken?'Réservé':frTime(t)}</button>`;
-    }).join('');
+    // le client ne voit QUE les créneaux libres (réservés/bloqués simplement masqués)
+    const freeSlots = s.selectedDate ? TIMES.filter(t => !s.bookings[s.selectedDate + '_' + t]) : [];
+    const slotsHtml = !s.selectedDate
+      ? `<div class="no-slot">Choisissez une date ci-dessus.</div>`
+      : (freeSlots.length
+          ? freeSlots.map(t => `<button class="slot${s.selectedSlot===t?' sel':''}" data-act="slot" data-time="${t}">${frTime(t)}</button>`).join('')
+          : `<div class="no-slot">Aucune disponibilité ce jour-là — choisissez un autre jour.</div>`);
 
     /* --- MODE DÉPLACEMENT (depuis le lien email) : choisir un nouveau créneau, sans re-saisie --- */
     if (s.reschedule){
@@ -1579,7 +1622,6 @@ const App = {
         <div class="legend">
           <span><i style="border:var(--bw) solid var(--line)"></i>Libre</span>
           <span><i style="background:var(--chrome)"></i>Choisi</span>
-          <span><i style="background:var(--panel2);border:1px solid #2a2a2a"></i>Réservé</span>
         </div>
         ${valid}
         <button class="ghost" data-act="cancelmove" style="margin-top:16px;width:100%">Garder mon rendez-vous actuel</button>`;
@@ -1673,6 +1715,8 @@ const App = {
 
       const count = TIMES.filter(t => { const x = s.bookings[day + '_' + t]; return x && !x.blocked; }).length;
       const freeCount = TIMES.filter(t => !s.bookings[day + '_' + t]).length;
+      const freeAm = TIMES.filter(t => parseInt(t, 10) < 14 && !s.bookings[day + '_' + t]).length;
+      const freePm = TIMES.filter(t => parseInt(t, 10) >= 14 && !s.bookings[day + '_' + t]).length;
       const blockedCount = TIMES.filter(t => { const x = s.bookings[day + '_' + t]; return x && x.blocked; }).length;
       const legend = SERVICES.map(sv => `<span><i style="background:${SERVICE_COLORS[sv.no]}"></i>${esc(sv.name)}</span>`).join('');
 
@@ -1691,8 +1735,10 @@ const App = {
         </div>
         <div class="bsub">${count} rendez-vous · séances de 45 min</div>
         <div class="bday-acts">
+          ${freeAm ? `<button data-act="blockam">Bloquer la matinée</button>` : ''}
+          ${freePm ? `<button data-act="blockpm">Bloquer l'après-midi</button>` : ''}
           ${freeCount ? `<button data-act="blockday">Bloquer toute la journée</button>` : ''}
-          ${blockedCount ? `<button data-act="unblockday">Libérer les créneaux bloqués</button>` : ''}
+          ${blockedCount ? `<button data-act="unblockday">Rouvrir les créneaux bloqués</button>` : ''}
         </div>
         ${s.pushOn
           ? `<div class="bpush on">🔔 Notifications activées sur cet appareil</div>`
@@ -1747,6 +1793,8 @@ document.getElementById('reserver').addEventListener('click', (e) => {
   else if (act === 'txsave') App.saveTexts();
   else if (act === 'block')   App.blockSlot(t.dataset.key);
   else if (act === 'blockday')   App.blockDay();
+  else if (act === 'blockam')    App.blockHalf('am');
+  else if (act === 'blockpm')    App.blockHalf('pm');
   else if (act === 'unblockday') App.unblockDay();
   else if (act === 'enablePush') App.enablePush();
   else if (act === 'logout')  App.barberLogout();
