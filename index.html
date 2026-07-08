@@ -311,7 +311,12 @@
   .empty{padding:30px 0;text-align:center;font-family:'Space Mono',monospace;color:var(--faint);font-size:13px}
   /* ---- planning de journée (espace barber) ---- */
   .bday{display:flex;align-items:stretch;border:var(--bw) solid var(--line);margin-bottom:10px}
-  .bday .lbl{flex:1;display:flex;align-items:center;justify-content:center;font-family:var(--display);font-size:clamp(16px,3vw,22px);text-transform:uppercase;letter-spacing:0.02em;padding:10px 6px}
+  .bday .lbl{flex:1;width:auto;display:flex;align-items:center;justify-content:center;gap:8px;background:none;border:none;color:var(--ink);font-family:var(--display);font-size:clamp(16px,3vw,22px);text-transform:uppercase;letter-spacing:0.02em;padding:10px 6px;cursor:pointer;transition:color .2s}
+  .bday .lbl:hover{background:none;color:var(--chrome)}
+  .bday .lbl .chev{font-size:11px;color:var(--faint)}
+  .bday-hint{color:var(--chrome);cursor:pointer;text-decoration:underline;text-transform:none;letter-spacing:0}
+  .barber-head .acts .bbell{padding:9px 13px;font-size:14px;line-height:1}
+  .barber-head .acts .bbell.on{background:#16231a;color:#79c979;border-color:#2c4a2c}
   .bday button{background:none;border:none;color:var(--ink);width:48px;font-family:'Space Mono',monospace;font-size:17px;cursor:pointer;transition:all .2s}
   .bday button:first-child{border-right:var(--bw) solid var(--line)}
   .bday button:last-child{border-left:var(--bw) solid var(--line)}
@@ -596,6 +601,14 @@
 </footer>
 
 <!-- ============================ MODIFICATIONS (barber) ============================ -->
+<div id="planning" class="modifs">
+  <div class="modifs-bar">
+    <span class="modifs-title">Planning</span>
+    <button class="modifs-close" data-act="closeplanning" aria-label="Fermer">✕</button>
+  </div>
+  <div class="modifs-body" id="planningContent"></div>
+</div>
+
 <div id="modifs" class="modifs">
   <div class="modifs-bar">
     <span class="modifs-title">Modifications</span>
@@ -887,9 +900,9 @@ const App = {
     bookings:{}, confirmed:null, myBookings:[], manage:null, reschedule:null,
     barberOpen:false, barberPw:'', barberAuthed:false, barberError:'', barberDay:'', pushOn:false,
     barberCalY:0, barberCalM:0,
-    adminPwInput:'', cmsUploading:false, cmsError:'', textEdit:null, textSaved:false, modifsOpen:false,
+    adminPwInput:'', cmsUploading:false, cmsError:'', textEdit:null, textSaved:false, modifsOpen:false, planningOpen:false,
     contacts:null, contactsAsk:false,
-    barberPanel:null, bkName:'', bkPhone:'', bkService:null, bkDate:'', bkSlot:null, periodFrom:'', periodTo:'',
+    barberPanel:null, bkName:'', bkPhone:'', bkService:null, bkDate:'', bkSlot:null, periodFrom:'', periodTo:'', dayActionsOpen:false,
   },
   MONTHS_AHEAD: 12,   // nombre de mois consultables vers l'avenir
 
@@ -1210,7 +1223,8 @@ const App = {
   },
   barberLogout(){
     try { localStorage.removeItem(LS_BARBER); } catch(e){}
-    this.set({ barberAuthed:false, barberOpen:false });
+    document.body.style.overflow = '';
+    this.set({ barberAuthed:false, barberOpen:false, planningOpen:false });
     this.refreshNav();
   },
   // affiche le lien "Planning" du menu uniquement quand Giovany est connecté
@@ -1374,14 +1388,13 @@ const App = {
     return this.renderBarberPhotos() + this.renderBarberTexts();
   },
   // ouvre le planning et défile jusqu'à lui (depuis le menu ou une notification)
+  // ouvre le planning en overlay plein écran dédié
   openPlanning(){
-    this.set({ barberOpen:true });
+    document.body.style.overflow = 'hidden';
+    this.set({ planningOpen:true, barberPanel:null });
     this.loadContacts();
-    setTimeout(() => {
-      const el = document.getElementById('barberPane') || document.getElementById('reserver');
-      if (el) el.scrollIntoView({ behavior:'smooth', block:'start' });
-    }, 80);
   },
+  closePlanning(){ document.body.style.overflow = ''; this.set({ planningOpen:false, barberPanel:null }); },
   // Giovany active les notifications push sur SON appareil (app installée)
   async enablePush(){
     if (!('serviceWorker' in navigator) || !('PushManager' in window)){
@@ -1738,7 +1751,6 @@ const App = {
 
   renderBarber(){
     const s = this.state;
-    if (!s.barberOpen) return '';
     let inner;
     if (!s.barberAuthed){
       inner = `<div class="login">
@@ -1790,26 +1802,24 @@ const App = {
       inner = `<div class="barber-head">
           <h3>Planning</h3>
           <div class="acts">
+            <button class="bbell${s.pushOn?' on':''}" data-act="enablePush" title="${s.pushOn?'Notifications activées':'Activer les notifications'}" aria-label="Notifications">🔔</button>
             <button data-act="refresh">Actualiser</button>
-            <button data-act="closeplanning">Fermer</button>
           </div>
         </div>
         ${this.renderBarberCal(s)}
         <div class="bday">
           <button data-act="bprev" aria-label="Jour précédent">‹</button>
-          <div class="lbl">${esc(this.labelOf(day))}</div>
+          <button class="lbl" data-act="dayactions">${esc(this.labelOf(day))} <span class="chev">${s.dayActionsOpen?'▴':'▾'}</span></button>
           <button data-act="bnext" aria-label="Jour suivant">›</button>
         </div>
-        <div class="bsub">${count} rendez-vous · séances de 45 min</div>
-        <div class="bday-acts">
+        <div class="bsub">${count} rendez-vous · séances de 45 min · <span class="bday-hint" data-act="dayactions">gérer la journée</span></div>
+        ${s.dayActionsOpen ? `<div class="bday-acts">
           ${freeAm ? `<button data-act="blockam">Bloquer la matinée</button>` : ''}
           ${freePm ? `<button data-act="blockpm">Bloquer l'après-midi</button>` : ''}
           ${freeCount ? `<button data-act="blockday">Bloquer toute la journée</button>` : ''}
           ${blockedCount ? `<button data-act="unblockday">Rouvrir les créneaux bloqués</button>` : ''}
-        </div>
-        ${s.pushOn
-          ? `<div class="bpush on">🔔 Notifications activées sur cet appareil</div>`
-          : `<button class="bpush" data-act="enablePush">🔔 Activer les notifications sur cet appareil</button>`}
+          ${(!freeAm && !freePm && !freeCount && !blockedCount) ? `<span class="mut" style="font-size:11px;padding:6px">Aucune action pour ce jour.</span>` : ''}
+        </div>` : ''}
         ${s.barberError ? `<div class="err" style="margin:0 0 12px">! ${esc(s.barberError)}</div>` : ''}
         <div class="agenda">${rows}</div>
         <div class="blegend">${legend}</div>
@@ -1859,12 +1869,13 @@ const App = {
   },
 
   render(){
-    const bo = this.state.barberOpen;   // en mode espace barber : on masque la partie client
-    const rh = document.getElementById('resHead'); if (rh) rh.style.display = bo ? 'none' : '';
-    const tw = document.getElementById('barberToggleWrap'); if (tw) tw.style.display = bo ? 'none' : '';
-    document.getElementById('resCard').innerHTML = bo ? '' : this.renderCard();
-    document.getElementById('myBookings').innerHTML = bo ? '' : this.renderMyBookings();
-    document.getElementById('barberPane').innerHTML = this.renderBarber();
+    document.getElementById('resCard').innerHTML = this.renderCard();
+    document.getElementById('myBookings').innerHTML = this.renderMyBookings();
+    const planning = document.getElementById('planning');
+    if (planning){
+      planning.classList.toggle('open', this.state.planningOpen);
+      document.getElementById('planningContent').innerHTML = this.state.planningOpen ? this.renderBarber() : '';
+    }
     const modifs = document.getElementById('modifs');
     if (modifs){
       modifs.classList.toggle('open', this.state.modifsOpen);
@@ -1903,11 +1914,12 @@ document.getElementById('reserver').addEventListener('click', (e) => {
   else if (act === 'photoright') App.movePhoto(t.dataset.id, 1);
   else if (act === 'txsave') App.saveTexts();
   else if (act === 'block')   App.blockSlot(t.dataset.key);
+  else if (act === 'dayactions') App.set({ dayActionsOpen: !App.state.dayActionsOpen });
   else if (act === 'blockday')   App.blockDay();
   else if (act === 'blockam')    App.blockHalf('am');
   else if (act === 'blockpm')    App.blockHalf('pm');
   else if (act === 'unblockday') App.unblockDay();
-  else if (act === 'closeplanning') App.set({ barberOpen:false, barberPanel:null });
+  else if (act === 'closeplanning') App.closePlanning();
   else if (act === 'panelmenu')   App.set({ barberPanel:'menu', barberError:'' });
   else if (act === 'panelbook')   App.set({ barberPanel:'book', barberError:'', bkDate: App.state.bkDate || App.state.barberDay });
   else if (act === 'panelperiod') App.set({ barberPanel:'period', barberError:'' });
@@ -1954,7 +1966,7 @@ document.getElementById('reserver').addEventListener('change', (e) => {
   else if (act === 'periodTo')   App.set({ periodTo: t.value });
 });
 document.getElementById('barberToggle').addEventListener('click', () => {
-  App.set({ barberOpen: !App.state.barberOpen });
+  App.openPlanning();
 });
 
 /* clic sur une prestation de "La carte" -> pré-sélection + redirection vers le planning */
