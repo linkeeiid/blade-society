@@ -2048,7 +2048,7 @@ function onResClick(e){
   else if (act === 'bkSlot')      App.set({ bkSlot:t.dataset.time, barberError:'' });
   else if (act === 'barberBook')  App.barberBook();
   else if (act === 'barberBlockPeriod') App.barberBlockPeriod();
-  else if (act === 'opensettings') App.openSettings();
+  else if (act === 'opensettings') { if (App.state.barberPanel === 'settings') App.set({ barberPanel:null, barberError:'' }); else App.openSettings(); }
   else if (act === 'schedtoggle')  App.schedToggleDay(+t.dataset.wd);
   else if (act === 'schedaddrange') App.schedAddRange(+t.dataset.wd);
   else if (act === 'schedrmrange')  App.schedRmRange(+t.dataset.wd, +t.dataset.ri);
