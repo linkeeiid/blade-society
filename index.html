@@ -1442,6 +1442,7 @@ const App = {
     document.body.style.overflow = 'hidden';
     this.set({ planningOpen:true, barberPanel:null });
     this.loadContacts();
+    setTimeout(() => { const el = document.getElementById('planning'); if (el) el.scrollTop = 0; }, 0);
   },
   closePlanning(){ document.body.style.overflow = ''; this.set({ planningOpen:false, barberPanel:null }); },
   // Giovany active les notifications push sur SON appareil (app installée)
@@ -1579,15 +1580,14 @@ const App = {
   schedAddRange(wd){ const sc = this.state.scheduleEdit; if (!sc) return; sc[wd].ranges = sc[wd].ranges || []; sc[wd].ranges.push(['11:00','20:00']); this.set({ scheduleEdit: sc }); },
   schedRmRange(wd, ri){ const sc = this.state.scheduleEdit; if (!sc) return; sc[wd].ranges.splice(ri, 1); if (!sc[wd].ranges.length) sc[wd].open = false; this.set({ scheduleEdit: sc }); },
   async saveSchedule(){
-    if (!this.adminPw()){ this.set({ barberError:'Mot de passe admin requis.' }); return; }
     const sc = this.state.scheduleEdit;
     for (const wd in sc){ const c = sc[wd]; if (c.open){ for (const r of (c.ranges || [])){ if (!r[0] || !r[1] || timeToMin(r[0]) >= timeToMin(r[1])){ this.set({ barberError:'Chaque plage doit avoir un début avant une fin.' }); return; } } } }
     this.set({ submitting:true, barberError:'' });
     const newContent = Object.assign({}, siteContent, { schedule: sc });
     try {
       const r = await fetch(this.cmsUrl('/content'), { method:'POST', headers:{'Content-Type':'application/json'},
-        body: JSON.stringify({ pw:this.adminPw(), content:newContent }) });
-      if (!r.ok){ this.set({ submitting:false, barberError: r.status === 401 ? 'Mot de passe admin incorrect.' : 'Enregistrement impossible.' }); return; }
+        body: JSON.stringify({ pw:CFG.BARBER_PASSWORD, content:newContent }) });
+      if (!r.ok){ this.set({ submitting:false, barberError:'Enregistrement impossible.' }); return; }
       siteContent = JSON.parse(JSON.stringify(newContent));
       this.set({ submitting:false, textSaved:true });
       applyContent(siteContent);
@@ -1916,16 +1916,6 @@ const App = {
     const bkDay = s.bkDate || s.barberDay;
     const bkFree = slotsForDate(bkDay).filter(t => !s.bookings[bkDay + '_' + t]);
     if (s.barberPanel === 'settings'){
-      if (!this.adminPw()){
-        return `<div class="bpanel">
-          <div class="res-lab">// Réglages — horaires</div>
-          <p class="mut" style="font-size:11px;margin-bottom:10px">Entrez le mot de passe admin (le même que la page Modifications).</p>
-          <input class="bfield" data-act="adminpw" type="password" value="${esc(s.adminPwInput||'')}" placeholder="MOT DE PASSE ADMIN">
-          ${s.barberError?`<div class="err">! ${esc(s.barberError)}</div>`:''}
-          <button class="submit" data-act="adminpwsave">Valider</button>
-          <button class="ghost bpanel-cancel" data-act="closepanel">Annuler</button>
-        </div>`;
-      }
       const sc = s.scheduleEdit || getSchedule();
       const DNAME = {1:'Lundi',2:'Mardi',3:'Mercredi',4:'Jeudi',5:'Vendredi',6:'Samedi',0:'Dimanche'};
       return `<div class="bpanel">
@@ -2048,7 +2038,7 @@ function onResClick(e){
   else if (act === 'bkSlot')      App.set({ bkSlot:t.dataset.time, barberError:'' });
   else if (act === 'barberBook')  App.barberBook();
   else if (act === 'barberBlockPeriod') App.barberBlockPeriod();
-  else if (act === 'opensettings') { if (App.state.barberPanel === 'settings') App.set({ barberPanel:null, barberError:'' }); else App.openSettings(); }
+  else if (act === 'opensettings') { if (App.state.barberPanel === 'settings') App.set({ barberPanel:null, barberError:'' }); else { App.openSettings(); setTimeout(function(){ const p = document.querySelector('#planning .bpanel'); if (p) p.scrollIntoView({ behavior:'smooth', block:'start' }); }, 60); } }
   else if (act === 'schedtoggle')  App.schedToggleDay(+t.dataset.wd);
   else if (act === 'schedaddrange') App.schedAddRange(+t.dataset.wd);
   else if (act === 'schedrmrange')  App.schedRmRange(+t.dataset.wd, +t.dataset.ri);

@@ -83,7 +83,8 @@ export default {
       }
       if (url.pathname === '/content' && req.method === 'POST') {
         const { pw, content } = await req.json();
-        if (pw !== env.BARBER_PW) return reply({ error: 'unauthorized' }, 401, cors);
+        const planningPw = env.PLANNING_PW || 'GiovanyBlade';   // barbier connecté = peut éditer horaires/contenu
+        if (pw !== env.BARBER_PW && pw !== planningPw) return reply({ error: 'unauthorized' }, 401, cors);
         await env.SUBS.put('content', JSON.stringify(content || {}));
         return reply({ ok: true }, 200, cors);
       }
