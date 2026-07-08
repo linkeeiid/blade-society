@@ -1106,7 +1106,7 @@ const App = {
     }
     await this.delStore(r.oldKey);                 // libère l'ancien créneau
     this.removeContact(r.oldKey);
-    this.saveContact({ key:newKey, phone:r.phone, name:r.name });   // tél reporté sur le nouveau créneau
+    this.saveContact({ key:newKey, phone:r.phone, name:r.name, email:r.email });   // coordonnées reportées sur le nouveau créneau
     const bookings = await this.fetchStore();
     const newDate = this.state.selectedDate, newTime = this.state.selectedSlot;
     const ctx = { name:r.name, email:r.email, phone:r.phone, service:r.service, price:r.price,
@@ -1175,7 +1175,7 @@ const App = {
   async saveContact(b){
     if (!CFG.PUSH_ENDPOINT || !b.key || !b.phone) return;
     try { await fetch(this.cmsUrl('/contact'), { method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({ key:b.key, phone:b.phone, name:b.name || '' }) }); } catch(e){}
+      body: JSON.stringify({ key:b.key, phone:b.phone, name:b.name || '', email:b.email || '' }) }); } catch(e){}
   },
   removeContact(key){
     if (!CFG.PUSH_ENDPOINT || !key) return;

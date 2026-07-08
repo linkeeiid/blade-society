@@ -12,6 +12,11 @@
      SENDER_NAME    (texte)   = Blade Society
    SMS de confirmation client (route POST /sms, via Brevo, payant) :
      SMS_SENDER     (texte)   = nom expéditeur SMS, 11 caractères max (ex: BladeSoc)
+   Rappel automatique ~1h avant le RDV (Cron Trigger) :
+     FIREBASE_DB_URL (texte)  = https://blade-society-default-rtdb.europe-west1.firebasedatabase.app
+     SITE_URL        (texte, optionnel) = https://bladesociety.fr
+     + Cron Trigger à ajouter (Settings -> Triggers -> Cron) : toutes les 10 min
+       expression cron equivalente : 0,10,20,30,40,50 * * * *
    Binding KV (Settings → Variables → KV Namespace Bindings) :
      Variable name = SUBS
    ===================================================================== */
@@ -89,7 +94,7 @@ export default {
         if (!b || !b.key) return reply({ error: 'bad' }, 400, cors);
         const raw = await env.SUBS.get('contacts');
         const map = raw ? JSON.parse(raw) : {};
-        map[b.key] = { phone: b.phone || '', name: b.name || '' };
+        map[b.key] = { phone: b.phone || '', name: b.name || '', email: b.email || '' };
         await env.SUBS.put('contacts', JSON.stringify(map));
         return reply({ ok: true }, 200, cors);
       }
@@ -107,26 +112,19 @@ export default {
         const raw = await env.SUBS.get('contacts');
         return reply({ contacts: raw ? JSON.parse(raw) : {} }, 200, cors);
       }
+      if (url.pathname === '/run-reminders' && req.method === 'POST') {  // déclenche les rappels à la main (test)
+        const { pw } = await req.json();
+        if (pw !== env.BARBER_PW) return reply({ error: 'unauthorized' }, 401, cors);
+        await sendReminders(env);
+        return reply({ ok: true }, 200, cors);
+      }
 
       /* ====== Email de confirmation au client (via Brevo) ====== */
       if (url.pathname === '/email' && req.method === 'POST') {
         if (!env.BREVO_API_KEY || !env.SENDER_EMAIL) return reply({ error: 'email not configured' }, 503, cors);
         const b = await req.json();
         if (!b || !b.to_email) return reply({ error: 'no recipient' }, 400, cors);
-        const r = await fetch('https://api.brevo.com/v3/smtp/email', {
-          method: 'POST',
-          headers: { 'api-key': env.BREVO_API_KEY, 'Content-Type': 'application/json', 'accept': 'application/json' },
-          body: JSON.stringify({
-            sender: { name: env.SENDER_NAME || 'Blade Society', email: env.SENDER_EMAIL },
-            to: [{ email: b.to_email, name: b.to_name || '' }],
-            subject: b.cancelled ? 'Votre rendez-vous a été annulé — Blade Society'
-              : (b.old_date && b.old_slot) ? 'Votre rendez-vous a été modifié — Blade Society'
-              : 'Votre rendez-vous chez Blade Society',
-            htmlContent: clientEmailHtml(b),
-            textContent: clientEmailText(b),
-            replyTo: { email: env.SENDER_EMAIL, name: env.SENDER_NAME || 'Blade Society' },
-          }),
-        });
+        const r = await sendBrevoEmail(b, env);
         return reply({ ok: r.ok, status: r.status }, 200, cors);
       }
 
@@ -157,6 +155,11 @@ export default {
     } catch (e) {
       return reply({ error: String((e && e.message) || e) }, 500, cors);
     }
+  },
+
+  /* ====== Rappel automatique ~1h avant le RDV (déclenché par le Cron Trigger) ====== */
+  async scheduled(event, env, ctx) {
+    ctx.waitUntil(sendReminders(env));
   },
 };
 
@@ -190,6 +193,7 @@ function clientEmailHtml(b) {
   const oldDate = esc(b.old_date || '');
   const oldSlot = esc(b.old_slot || '');
   const isMod = !!(b.old_date && b.old_slot);
+  const isReminder = !!b.reminder;
   const row = (label, value) => value
     ? `<tr><td style="padding:8px 0;color:#9b978c;font-size:13px;width:120px">${label}</td><td style="padding:8px 0;color:#1a1a1a;font-size:15px;font-weight:600">${value}</td></tr>`
     : '';
@@ -241,9 +245,9 @@ function clientEmailHtml(b) {
           <div style="color:#7c776c;font-size:11px;letter-spacing:.22em;margin-top:5px">COIFFEUR · BARBIER</div>
         </td></tr>
         <tr><td style="padding:30px 30px 6px">
-          <div style="display:inline-block;background:${isMod ? '#fff4e6' : '#eef6ee'};color:${isMod ? '#b26a00' : '#2e7d32'};font-size:13px;font-weight:700;padding:7px 14px;border-radius:20px">${isMod ? '✓ Rendez-vous modifié' : '✓ Rendez-vous confirmé'}</div>
+          <div style="display:inline-block;background:${(isMod || isReminder) ? '#fff4e6' : '#eef6ee'};color:${(isMod || isReminder) ? '#b26a00' : '#2e7d32'};font-size:13px;font-weight:700;padding:7px 14px;border-radius:20px">${isReminder ? '⏰ Rappel de rendez-vous' : isMod ? '✓ Rendez-vous modifié' : '✓ Rendez-vous confirmé'}</div>
           <p style="color:#1a1a1a;font-size:16px;margin:20px 0 4px">Bonjour ${name},</p>
-          <p style="color:#555;font-size:14px;line-height:1.5;margin:0 0 ${isMod ? '8' : '14'}px">${isMod ? 'Votre rendez-vous a bien été déplacé. Voici votre nouveau créneau&nbsp;:' : 'Votre rendez-vous est bien enregistré. Voici le récapitulatif&nbsp;:'}</p>
+          <p style="color:#555;font-size:14px;line-height:1.5;margin:0 0 ${isMod ? '8' : '14'}px">${isReminder ? 'C\'est bientôt l\'heure&nbsp;! Votre rendez-vous est dans environ 1&nbsp;heure&nbsp;:' : isMod ? 'Votre rendez-vous a bien été déplacé. Voici votre nouveau créneau&nbsp;:' : 'Votre rendez-vous est bien enregistré. Voici le récapitulatif&nbsp;:'}</p>
           ${isMod ? `<p style="color:#999;font-size:13px;line-height:1.5;margin:0 0 14px">Ancien créneau&nbsp;: <span style="text-decoration:line-through">${oldDate} · ${oldSlot}</span></p>` : ''}
         </td></tr>
         <tr><td style="padding:0 30px">
@@ -309,7 +313,7 @@ function clientEmailText(b) {
     return L.join('\n');
   }
   const isMod = b.old_date && b.old_slot;
-  L.push('Bonjour ' + name + ',', isMod ? 'Votre rendez-vous a bien été modifié.' : 'Votre rendez-vous est confirmé.');
+  L.push('Bonjour ' + name + ',', b.reminder ? 'C\'est bientôt l\'heure ! Votre rendez-vous est dans environ 1 heure.' : isMod ? 'Votre rendez-vous a bien été modifié.' : 'Votre rendez-vous est confirmé.');
   if (isMod) L.push('Ancien créneau : ' + b.old_date + ' · ' + b.old_slot);
   if (service) L.push('Prestation : ' + service + (price ? ' (' + price + ')' : ''));
   if (date) L.push('Date : ' + date);
@@ -320,6 +324,91 @@ function clientEmailText(b) {
   if (b.manage_url) L.push('', 'Gérer, déplacer ou annuler votre rendez-vous : ' + b.manage_url);
   L.push('', 'À très vite, Giovany — Blade Society', 'https://bladesociety.fr');
   return L.join('\n');
+}
+
+/* ---------- Envoi Brevo (partagé : route /email + rappel planifié) ---------- */
+function emailSubject(b) {
+  if (b.reminder) return 'Rappel : votre rendez-vous dans 1h — Blade Society';
+  if (b.cancelled) return 'Votre rendez-vous a été annulé — Blade Society';
+  if (b.old_date && b.old_slot) return 'Votre rendez-vous a été modifié — Blade Society';
+  return 'Votre rendez-vous chez Blade Society';
+}
+async function sendBrevoEmail(b, env) {
+  return fetch('https://api.brevo.com/v3/smtp/email', {
+    method: 'POST',
+    headers: { 'api-key': env.BREVO_API_KEY, 'Content-Type': 'application/json', 'accept': 'application/json' },
+    body: JSON.stringify({
+      sender: { name: env.SENDER_NAME || 'Blade Society', email: env.SENDER_EMAIL },
+      to: [{ email: b.to_email, name: b.to_name || '' }],
+      subject: emailSubject(b),
+      htmlContent: clientEmailHtml(b),
+      textContent: clientEmailText(b),
+      replyTo: { email: env.SENDER_EMAIL, name: env.SENDER_NAME || 'Blade Society' },
+    }),
+  });
+}
+
+/* ---------- Rappel de RDV : date/heure FR + heure de Paris ---------- */
+const DOW_FR = ['Dim', 'Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam'];
+const MON_FR = ['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre'];
+function prettyDateFR(iso) {
+  const [y, m, d] = iso.split('-').map(Number);
+  const dt = new Date(Date.UTC(y, m - 1, d));
+  return DOW_FR[dt.getUTCDay()] + ' ' + d + ' ' + MON_FR[m - 1] + ' ' + y;
+}
+function frTimeFR(t) { const p = String(t).split(':'); return p[0] + 'h' + p[1]; }
+function parisNow() {
+  const parts = new Intl.DateTimeFormat('en-GB', {
+    timeZone: 'Europe/Paris', year: 'numeric', month: '2-digit', day: '2-digit',
+    hour: '2-digit', minute: '2-digit', hour12: false,
+  }).formatToParts(new Date());
+  const p = {}; for (const x of parts) p[x.type] = x.value;
+  let hh = parseInt(p.hour, 10); if (hh === 24) hh = 0;
+  return { date: p.year + '-' + p.month + '-' + p.day, minutes: hh * 60 + parseInt(p.minute, 10) };
+}
+
+/* ---------- Rappels automatiques : appelé par le Cron Trigger ---------- */
+async function sendReminders(env) {
+  if (!env.BREVO_API_KEY || !env.SENDER_EMAIL || !env.FIREBASE_DB_URL) return;
+  let slots = {};
+  try {
+    const r = await fetch(env.FIREBASE_DB_URL.replace(/\/$/, '') + '/slots.json');
+    slots = (await r.json()) || {};
+  } catch (e) { return; }
+  const contacts = JSON.parse((await env.SUBS.get('contacts')) || '{}');
+  const reminded = JSON.parse((await env.SUBS.get('reminded')) || '{}');
+  const now = parisNow();
+  const site = (env.SITE_URL || 'https://bladesociety.fr').replace(/\/$/, '') + '/';
+  let changed = false;
+  for (const key in slots) {
+    const sl = slots[key];
+    if (!sl || sl.blocked) continue;
+    const us = key.indexOf('_');
+    if (us < 0) continue;
+    const date = key.slice(0, us), time = key.slice(us + 1);
+    if (date !== now.date) continue;                       // uniquement les RDV d'aujourd'hui
+    const tp = time.split(':');
+    const apptMin = parseInt(tp[0], 10) * 60 + parseInt(tp[1], 10);
+    const diff = apptMin - now.minutes;
+    if (diff < 50 || diff > 70) continue;                  // fenêtre ~1h avant
+    if (reminded[key]) continue;                           // déjà rappelé
+    const c = contacts[key];
+    if (!c || !c.email) continue;                          // pas d'email connu -> pas de rappel
+    const manageUrl = site + '?rdv=' + encodeURIComponent(key) + '&t=' + encodeURIComponent(sl.tok || '')
+      + '&e=' + encodeURIComponent(c.email) + '&p=' + encodeURIComponent(c.phone || '');
+    const b = {
+      to_email: c.email, to_name: c.name || sl.name || '',
+      service: sl.service || '', price: sl.price || '',
+      date: prettyDateFR(date), slot: frTimeFR(time),
+      reminder: true, manage_url: manageUrl,
+    };
+    try { await sendBrevoEmail(b, env); reminded[key] = true; changed = true; } catch (e) {}
+  }
+  for (const k in reminded) {                              // purge des clés passées
+    const d = k.slice(0, k.indexOf('_'));
+    if (d && d < now.date) { delete reminded[k]; changed = true; }
+  }
+  if (changed) await env.SUBS.put('reminded', JSON.stringify(reminded));
 }
 
 /* ---------- Cloudinary (upload signé : le secret reste dans le Worker) ---------- */
