@@ -353,6 +353,21 @@
   .mut{color:var(--faint)}
   .blogout{display:block;margin:22px auto 0;background:none;border:none;color:var(--faint);font-family:'Space Mono',monospace;font-size:11px;letter-spacing:0.08em;text-decoration:underline;cursor:pointer}
   .blogout:hover{color:var(--ink)}
+  /* RÉGLAGES — horaires par jour */
+  .sched-day{border:var(--bw) solid var(--line);border-radius:var(--radius);padding:12px 13px;margin-bottom:8px}
+  .sched-head{display:flex;align-items:center;justify-content:space-between}
+  .sched-name{font-family:'Space Mono',monospace;font-size:12px;letter-spacing:0.08em;text-transform:uppercase;color:var(--ink)}
+  .sched-toggle{background:var(--panel2);border:var(--bw) solid var(--line);color:var(--faint);padding:6px 14px;border-radius:20px;font-family:'Space Mono',monospace;font-size:10.5px;letter-spacing:0.06em;text-transform:uppercase;cursor:pointer;transition:all .2s}
+  .sched-toggle.on{background:#16231a;color:#79c979;border-color:#2c4a2c}
+  .sched-ranges{margin-top:10px;display:flex;flex-direction:column;gap:8px}
+  .sched-range{display:flex;align-items:center;gap:8px}
+  .sched-time{flex:1;min-width:0;padding:9px 8px;background:var(--panel2);border:var(--bw) solid var(--line);border-radius:var(--radius);color:var(--ink);font-family:'Space Mono',monospace;font-size:13px;color-scheme:dark}
+  .sched-arrow{color:var(--faint);font-size:13px}
+  .sched-del{background:none;border:var(--bw) solid var(--line);color:var(--faint);width:34px;height:34px;border-radius:var(--radius);cursor:pointer;flex-shrink:0}
+  .sched-del:hover{border-color:#c75d5d;color:#c75d5d}
+  .sched-add{align-self:flex-start;background:none;border:1px dashed var(--line);color:var(--faint);padding:7px 12px;border-radius:var(--radius);font-family:'Space Mono',monospace;font-size:10.5px;letter-spacing:0.05em;text-transform:uppercase;cursor:pointer}
+  .sched-add:hover{border-color:var(--chrome);color:var(--ink)}
+  .sched-ok{color:#79c979;font-family:'Space Mono',monospace;font-size:12px;margin:8px 0}
   .bpush{display:block;width:100%;margin-bottom:14px;padding:13px;border-radius:var(--radius);background:var(--chrome);color:#0d0d0d;border:none;font-family:'Space Mono',monospace;font-size:12px;letter-spacing:0.08em;text-transform:uppercase;font-weight:700;cursor:pointer;transition:transform .25s}
   .bpush:hover{transform:translateY(-2px)}
   .bpush.on{background:none;border:var(--bw) solid var(--line);color:var(--mut);font-weight:400;cursor:default}
@@ -669,6 +684,39 @@ const LS_BARBER = 'bladesociety_barber_auth_v1';   // connexion barber persistan
 const RL_MAX = 3, RL_WINDOW_MIN = 15;              // max 3 réservations / 15 min par appareil (anti-spam)
 // Créneaux de 45 min, 10h → 20h (la pause est gérée par Giovany via « Bloquer »)
 const TIMES  = ['11:00','11:45','12:30','13:15','14:00','14:45','15:30','16:15','17:00','17:45','18:30','19:15'];
+const SLOT_MIN = 45;                       // durée d'un créneau (min)
+// horaires par jour de la semaine (0=Dim … 6=Sam). Défaut : lundi fermé, sinon 11h-20h.
+const DEFAULT_SCHEDULE = {
+  0: { open:true,  ranges:[['11:00','20:00']] },
+  1: { open:false, ranges:[] },
+  2: { open:true,  ranges:[['11:00','20:00']] },
+  3: { open:true,  ranges:[['11:00','20:00']] },
+  4: { open:true,  ranges:[['11:00','20:00']] },
+  5: { open:true,  ranges:[['11:00','20:00']] },
+  6: { open:true,  ranges:[['11:00','20:00']] },
+};
+const timeToMin = (t) => { const p = String(t).split(':'); return (+p[0]) * 60 + (+p[1] || 0); };
+const minToTime = (m) => pad(Math.floor(m/60)) + ':' + pad(m % 60);
+function getSchedule(){ return (siteContent && siteContent.schedule) ? siteContent.schedule : DEFAULT_SCHEDULE; }
+// liste des créneaux (HH:MM) générés pour une date, selon les horaires du jour
+function slotsForDate(iso){
+  if (!iso) return [];
+  const cfg = getSchedule()[new Date(iso + 'T00:00:00').getDay()];
+  if (!cfg || !cfg.open || !Array.isArray(cfg.ranges)) return [];
+  const out = [];
+  for (const r of cfg.ranges){
+    if (!r || r.length < 2) continue;
+    let start = timeToMin(r[0]); const end = timeToMin(r[1]);
+    while (start + SLOT_MIN <= end){ out.push(minToTime(start)); start += SLOT_MIN; }
+  }
+  return Array.from(new Set(out)).sort();
+}
+// créneaux à afficher dans l'agenda barber = créneaux du jour ∪ créneaux déjà réservés/bloqués
+function agendaSlots(iso, bookings){
+  const pre = iso + '_';
+  const booked = Object.keys(bookings || {}).filter(k => k.indexOf(pre) === 0).map(k => k.slice(pre.length));
+  return Array.from(new Set(slotsForDate(iso).concat(booked))).sort();
+}
 const slotEnd = (t) => { let [h,m] = t.split(':').map(Number); m += 45; if (m >= 60){ h++; m -= 60; } return pad(h)+':'+pad(m); };
 const frTime = (t) => { const p = String(t).split(':'); return p[0] + 'h' + p[1]; };  // 11:00 -> 11h00, 11:45 -> 11h45
 const DOW    = ['Dim','Lun','Mar','Mer','Jeu','Ven','Sam'];
@@ -798,6 +846,7 @@ let siteContent = {
   bio1: (document.getElementById('bio1') || {}).textContent || '',
   bio2: (document.getElementById('bio2') || {}).textContent || '',
   services: SERVICES.map(s => ({ no: s.no, name: s.name, price: s.price, desc: s.desc })),
+  schedule: JSON.parse(JSON.stringify(DEFAULT_SCHEDULE)),
 };
 function applyContent(c){
   if (c.heroIntro != null){ const e = document.getElementById('heroIntro'); if (e) e.textContent = c.heroIntro; }
@@ -902,7 +951,7 @@ const App = {
     barberCalY:0, barberCalM:0,
     adminPwInput:'', cmsUploading:false, cmsError:'', textEdit:null, textSaved:false, modifsOpen:false, planningOpen:false,
     contacts:null, contactsAsk:false,
-    barberPanel:null, bkName:'', bkPhone:'', bkService:null, bkDate:'', bkSlot:null, periodFrom:'', periodTo:'', dayActionsOpen:false,
+    barberPanel:null, bkName:'', bkPhone:'', bkService:null, bkDate:'', bkSlot:null, periodFrom:'', periodTo:'', dayActionsOpen:false, scheduleEdit:null,
   },
   MONTHS_AHEAD: 12,   // nombre de mois consultables vers l'avenir
 
@@ -1452,7 +1501,7 @@ const App = {
   async blockHalf(part){ return this.blockRange(part); },   // 'am' = matin (<14h), 'pm' = après-midi (>=14h)
   async blockRange(part){
     const day = this.state.barberDay; if (!day) return;
-    const free = TIMES.filter(t => {
+    const free = slotsForDate(day).filter(t => {
       if (this.state.bookings[day + '_' + t]) return false;
       if (part === 'am') return parseInt(t, 10) < 14;
       if (part === 'pm') return parseInt(t, 10) >= 14;
@@ -1466,7 +1515,7 @@ const App = {
   // libère uniquement les créneaux BLOQUÉS de la journée (laisse les RDV clients)
   async unblockDay(){
     const day = this.state.barberDay; if (!day) return;
-    const blocked = TIMES.filter(t => { const x = this.state.bookings[day + '_' + t]; return x && x.blocked; });
+    const blocked = agendaSlots(day, this.state.bookings).filter(t => { const x = this.state.bookings[day + '_' + t]; return x && x.blocked; });
     if (!blocked.length) return;
     await Promise.all(blocked.map(t => this.delStore(day + '_' + t)));
     const bookings = await this.fetchStore();
@@ -1506,7 +1555,7 @@ const App = {
     while (d <= end){
       const iso = isoOf(d);
       if (this.isOpenDay(d)){
-        for (const t of TIMES){ const key = iso + '_' + t; if (!this.state.bookings[key]) puts.push(this.putStore(key, { name:'', service:'Bloqué', serviceNo:'X', blocked:true, ts:Date.now() })); }
+        for (const t of slotsForDate(iso)){ const key = iso + '_' + t; if (!this.state.bookings[key]) puts.push(this.putStore(key, { name:'', service:'Bloqué', serviceNo:'X', blocked:true, ts:Date.now() })); }
       }
       d.setDate(d.getDate() + 1);
     }
@@ -1514,10 +1563,41 @@ const App = {
     const bookings = await this.fetchStore();
     this.set({ bookings, submitting:false, barberPanel:null, periodFrom:'', periodTo:'', barberError:'' });
   },
+  /* ---------------- Réglages : horaires par jour ---------------- */
+  openSettings(){
+    const base = getSchedule();
+    const sc = {};
+    for (let wd = 0; wd < 7; wd++){ const c = base[wd] || DEFAULT_SCHEDULE[wd]; sc[wd] = { open: !!c.open, ranges: (c.ranges || []).map(r => [r[0], r[1]]) }; }
+    this.set({ barberPanel:'settings', scheduleEdit: sc, barberError:'', textSaved:false });
+  },
+  schedToggleDay(wd){
+    const sc = this.state.scheduleEdit; if (!sc) return; const c = sc[wd];
+    c.open = !c.open;
+    if (c.open && (!c.ranges || !c.ranges.length)) c.ranges = [['11:00','20:00']];
+    this.set({ scheduleEdit: sc, barberError:'' });
+  },
+  schedAddRange(wd){ const sc = this.state.scheduleEdit; if (!sc) return; sc[wd].ranges = sc[wd].ranges || []; sc[wd].ranges.push(['11:00','20:00']); this.set({ scheduleEdit: sc }); },
+  schedRmRange(wd, ri){ const sc = this.state.scheduleEdit; if (!sc) return; sc[wd].ranges.splice(ri, 1); if (!sc[wd].ranges.length) sc[wd].open = false; this.set({ scheduleEdit: sc }); },
+  async saveSchedule(){
+    if (!this.adminPw()){ this.set({ barberError:'Mot de passe admin requis.' }); return; }
+    const sc = this.state.scheduleEdit;
+    for (const wd in sc){ const c = sc[wd]; if (c.open){ for (const r of (c.ranges || [])){ if (!r[0] || !r[1] || timeToMin(r[0]) >= timeToMin(r[1])){ this.set({ barberError:'Chaque plage doit avoir un début avant une fin.' }); return; } } } }
+    this.set({ submitting:true, barberError:'' });
+    const newContent = Object.assign({}, siteContent, { schedule: sc });
+    try {
+      const r = await fetch(this.cmsUrl('/content'), { method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ pw:this.adminPw(), content:newContent }) });
+      if (!r.ok){ this.set({ submitting:false, barberError: r.status === 401 ? 'Mot de passe admin incorrect.' : 'Enregistrement impossible.' }); return; }
+      siteContent = JSON.parse(JSON.stringify(newContent));
+      this.set({ submitting:false, textSaved:true });
+      applyContent(siteContent);
+      setTimeout(() => { this.state.textSaved = false; this.render(); }, 2500);
+    } catch(e){ this.set({ submitting:false, barberError:'Erreur réseau.' }); }
+  },
 
   /* ---------------- calendrier ---------------- */
   todayMidnight(){ const t = new Date(); t.setHours(0,0,0,0); return t; },
-  isOpenDay(d){ return d.getDay() !== 1; },                 // fermé le lundi (ouvert mardi -> dimanche)
+  isOpenDay(d){ const cfg = getSchedule()[d.getDay()]; return !!(cfg && cfg.open && cfg.ranges && cfg.ranges.length); },   // ouvert selon les horaires par jour
   labelOf(iso){
     const [y,m,d] = iso.split('-').map(Number);
     const dt = new Date(y, m-1, d);
@@ -1556,7 +1636,8 @@ const App = {
     for (let i=0;i<firstDow;i++) cells += `<div class="cal-cell blank"></div>`;
     for (let d=1; d<=nb; d++){
       const iso = y + '-' + pad(m+1) + '-' + pad(d);
-      const has = TIMES.some(t => { const x = s.bookings[iso+'_'+t]; return x && !x.blocked; });
+      const pre = iso + '_';
+      const has = Object.keys(s.bookings).some(k => k.indexOf(pre) === 0 && s.bookings[k] && !s.bookings[k].blocked);
       const cls = 'cal-cell' + (iso===s.barberDay?' sel':'') + (iso===todayIso?' today':'');
       cells += `<button class="${cls}" data-act="bdaypick" data-iso="${iso}">${d}${has?'<span class="cdot"></span>':''}</button>`;
     }
@@ -1641,7 +1722,8 @@ const App = {
     for (let day=1; day<=nbDays; day++){
       const dt = new Date(s.viewY, s.viewM, day);
       const iso = isoOf(dt);
-      const fullyTaken = TIMES.every(t => !!s.bookings[iso + '_' + t]);   // journée pleine ou bloquée -> grisée
+      const sd = slotsForDate(iso);
+      const fullyTaken = sd.length > 0 && sd.every(t => !!s.bookings[iso + '_' + t]);   // journée pleine ou bloquée -> grisée
       const off = dt < today || !this.isOpenDay(dt) || fullyTaken;
       const cls = 'cal-cell'
         + (off ? ' off' : '')
@@ -1668,7 +1750,7 @@ const App = {
     const selectedDateLabel = s.selectedDate ? this.labelOf(s.selectedDate) : '';
 
     // le client ne voit QUE les créneaux libres (réservés/bloqués simplement masqués)
-    const freeSlots = s.selectedDate ? TIMES.filter(t => !s.bookings[s.selectedDate + '_' + t]) : [];
+    const freeSlots = s.selectedDate ? slotsForDate(s.selectedDate).filter(t => !s.bookings[s.selectedDate + '_' + t]) : [];
     const slotsHtml = !s.selectedDate
       ? `<div class="no-slot">Choisissez une date ci-dessus.</div>`
       : (freeSlots.length
@@ -1762,7 +1844,7 @@ const App = {
       </div>`;
     } else {
       const day = s.barberDay;
-      const rows = TIMES.map(t => {
+      const rows = agendaSlots(day, s.bookings).map(t => {
         const key = day + '_' + t;
         const sl = s.bookings[key];
         if (sl && sl.blocked){
@@ -1792,16 +1874,18 @@ const App = {
         </div>`;
       }).join('');
 
-      const count = TIMES.filter(t => { const x = s.bookings[day + '_' + t]; return x && !x.blocked; }).length;
-      const freeCount = TIMES.filter(t => !s.bookings[day + '_' + t]).length;
-      const freeAm = TIMES.filter(t => parseInt(t, 10) < 14 && !s.bookings[day + '_' + t]).length;
-      const freePm = TIMES.filter(t => parseInt(t, 10) >= 14 && !s.bookings[day + '_' + t]).length;
-      const blockedCount = TIMES.filter(t => { const x = s.bookings[day + '_' + t]; return x && x.blocked; }).length;
+      const sched = slotsForDate(day);
+      const count = agendaSlots(day, s.bookings).filter(t => { const x = s.bookings[day + '_' + t]; return x && !x.blocked; }).length;
+      const freeCount = sched.filter(t => !s.bookings[day + '_' + t]).length;
+      const freeAm = sched.filter(t => parseInt(t, 10) < 14 && !s.bookings[day + '_' + t]).length;
+      const freePm = sched.filter(t => parseInt(t, 10) >= 14 && !s.bookings[day + '_' + t]).length;
+      const blockedCount = agendaSlots(day, s.bookings).filter(t => { const x = s.bookings[day + '_' + t]; return x && x.blocked; }).length;
       const legend = SERVICES.map(sv => `<span><i style="background:${SERVICE_COLORS[sv.no]}"></i>${esc(sv.name)}</span>`).join('');
 
       inner = `<div class="barber-head">
           <h3>Planning</h3>
           <div class="acts">
+            <button class="bbell" data-act="opensettings" title="Réglages — horaires" aria-label="Réglages">⚙️</button>
             <button class="bbell${s.pushOn?' on':''}" data-act="enablePush" title="${s.pushOn?'Notifications activées':'Activer les notifications'}" aria-label="Notifications">🔔</button>
             <button data-act="refresh">Actualiser</button>
           </div>
@@ -1830,7 +1914,43 @@ const App = {
   },
   renderBarberPanel(s){
     const bkDay = s.bkDate || s.barberDay;
-    const bkFree = TIMES.filter(t => !s.bookings[bkDay + '_' + t]);
+    const bkFree = slotsForDate(bkDay).filter(t => !s.bookings[bkDay + '_' + t]);
+    if (s.barberPanel === 'settings'){
+      if (!this.adminPw()){
+        return `<div class="bpanel">
+          <div class="res-lab">// Réglages — horaires</div>
+          <p class="mut" style="font-size:11px;margin-bottom:10px">Entrez le mot de passe admin (le même que la page Modifications).</p>
+          <input class="bfield" data-act="adminpw" type="password" value="${esc(s.adminPwInput||'')}" placeholder="MOT DE PASSE ADMIN">
+          ${s.barberError?`<div class="err">! ${esc(s.barberError)}</div>`:''}
+          <button class="submit" data-act="loadcontactspw">Valider</button>
+          <button class="ghost bpanel-cancel" data-act="closepanel">Annuler</button>
+        </div>`;
+      }
+      const sc = s.scheduleEdit || getSchedule();
+      const DNAME = {1:'Lundi',2:'Mardi',3:'Mercredi',4:'Jeudi',5:'Vendredi',6:'Samedi',0:'Dimanche'};
+      return `<div class="bpanel">
+        <div class="res-lab">// Réglages — horaires d'ouverture</div>
+        ${[1,2,3,4,5,6,0].map(wd => { const c = sc[wd] || {open:false,ranges:[]}; return `<div class="sched-day">
+          <div class="sched-head">
+            <span class="sched-name">${DNAME[wd]}</span>
+            <button class="sched-toggle${c.open?' on':''}" data-act="schedtoggle" data-wd="${wd}">${c.open?'Ouvert':'Fermé'}</button>
+          </div>
+          ${c.open ? `<div class="sched-ranges">
+            ${(c.ranges||[]).map((r,ri) => `<div class="sched-range">
+              <input class="sched-time" type="time" step="900" data-act="schedstart" data-wd="${wd}" data-ri="${ri}" value="${esc(r[0]||'')}">
+              <span class="sched-arrow">→</span>
+              <input class="sched-time" type="time" step="900" data-act="schedend" data-wd="${wd}" data-ri="${ri}" value="${esc(r[1]||'')}">
+              <button class="sched-del" data-act="schedrmrange" data-wd="${wd}" data-ri="${ri}" aria-label="Supprimer">✕</button>
+            </div>`).join('')}
+            <button class="sched-add" data-act="schedaddrange" data-wd="${wd}">＋ Ajouter une plage</button>
+          </div>` : ''}
+        </div>`; }).join('')}
+        ${s.barberError?`<div class="err">! ${esc(s.barberError)}</div>`:''}
+        ${s.textSaved?`<div class="sched-ok">✓ Horaires enregistrés</div>`:''}
+        <button class="submit" data-act="saveSchedule">${s.submitting?'Enregistrement…':'Valider les horaires'}</button>
+        <button class="ghost bpanel-cancel" data-act="closepanel">Fermer</button>
+      </div>`;
+    }
     if (s.barberPanel === 'book'){
       return `<div class="bpanel">
         <div class="res-lab">// Nouvelle réservation</div>
@@ -1928,6 +2048,11 @@ document.getElementById('reserver').addEventListener('click', (e) => {
   else if (act === 'bkSlot')      App.set({ bkSlot:t.dataset.time, barberError:'' });
   else if (act === 'barberBook')  App.barberBook();
   else if (act === 'barberBlockPeriod') App.barberBlockPeriod();
+  else if (act === 'opensettings') App.openSettings();
+  else if (act === 'schedtoggle')  App.schedToggleDay(+t.dataset.wd);
+  else if (act === 'schedaddrange') App.schedAddRange(+t.dataset.wd);
+  else if (act === 'schedrmrange')  App.schedRmRange(+t.dataset.wd, +t.dataset.ri);
+  else if (act === 'saveSchedule')  App.saveSchedule();
   else if (act === 'enablePush') App.enablePush();
   else if (act === 'logout')  App.barberLogout();
   else if (act === 'cancel')  App.cancelBooking(t.dataset.key);
@@ -1946,6 +2071,8 @@ document.getElementById('reserver').addEventListener('input', (e) => {
   else if (act === 'bkPhone')  App.state.bkPhone = t.value;
   else if (act === 'periodFrom') App.state.periodFrom = t.value;
   else if (act === 'periodTo')   App.state.periodTo = t.value;
+  else if (act === 'schedstart'){ const sc = App.state.scheduleEdit; if (sc) sc[+t.dataset.wd].ranges[+t.dataset.ri][0] = t.value; }
+  else if (act === 'schedend')  { const sc = App.state.scheduleEdit; if (sc) sc[+t.dataset.wd].ranges[+t.dataset.ri][1] = t.value; }
   else if (act === 'txhero')   { if (App.state.textEdit) App.state.textEdit.heroIntro = t.value; }
   else if (act === 'txbio1')   { if (App.state.textEdit) App.state.textEdit.bio1 = t.value; }
   else if (act === 'txbio2')   { if (App.state.textEdit) App.state.textEdit.bio2 = t.value; }
