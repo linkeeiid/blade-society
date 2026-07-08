@@ -327,6 +327,27 @@
   .contacts-unlock button{background:var(--chrome);color:#0d0d0d;border:none;border-radius:var(--radius);padding:0 16px;font-family:'Space Mono',monospace;font-size:10.5px;letter-spacing:0.06em;text-transform:uppercase;font-weight:700;cursor:pointer}
   .nm-tel{display:inline-block;margin-top:3px;color:var(--chrome);font-family:'Space Mono',monospace;font-size:12px;text-decoration:none;letter-spacing:0.03em}
   .nm-tel:hover{text-decoration:underline}
+  /* PANNEAU "+" (réservation perso + période) */
+  .bplus{display:block;width:100%;margin-top:10px;background:none;border:1px dashed var(--line);color:var(--faint);padding:13px;border-radius:var(--radius);font-family:'Space Mono',monospace;font-size:11px;letter-spacing:0.06em;text-transform:uppercase;cursor:pointer;transition:all .25s}
+  .bplus:hover{border-color:var(--chrome);color:var(--ink)}
+  .bplus.solo{margin-top:18px}
+  .bplus-wrap{margin-top:18px;display:flex;flex-direction:column;gap:8px}
+  .bpanel{margin-top:18px;border:var(--bw) solid var(--line);border-radius:var(--radius);padding:clamp(16px,3vw,22px)}
+  .bpanel .res-lab{margin-bottom:14px}
+  .bfield{width:100%;margin-bottom:10px;padding:13px 14px;background:var(--panel2);border:var(--bw) solid var(--line);border-radius:var(--radius);color:var(--ink);font-family:'Space Mono',monospace;font-size:13px}
+  .bfield[type=date]{color-scheme:dark}
+  .blab{display:block;font-family:'Space Mono',monospace;font-size:10px;letter-spacing:0.1em;text-transform:uppercase;color:var(--faint);margin:6px 0 6px}
+  .bpresta{display:flex;flex-direction:column;gap:6px;margin-bottom:6px}
+  .bpresta-row{display:flex;justify-content:space-between;gap:10px;background:var(--panel2);border:var(--bw) solid var(--line);border-radius:var(--radius);color:var(--ink);padding:11px 13px;font-family:'Space Mono',monospace;font-size:12px;cursor:pointer;transition:all .2s}
+  .bpresta-row.sel{background:var(--chrome);color:#0d0d0d;font-weight:700}
+  .bslots{display:grid;grid-template-columns:repeat(auto-fill,minmax(74px,1fr));gap:6px;margin-bottom:6px}
+  .bslot{padding:11px 0;border:var(--bw) solid var(--line);border-radius:var(--radius);background:var(--panel2);color:var(--ink);font-family:'Space Mono',monospace;font-size:12px;cursor:pointer;transition:all .2s}
+  .bslot.sel{background:var(--chrome);color:#0d0d0d;font-weight:700}
+  .bpanel .submit{margin-top:12px}
+  .bpanel-cancel{width:100%;margin-top:8px}
+  .mut{color:var(--faint)}
+  .blogout{display:block;margin:22px auto 0;background:none;border:none;color:var(--faint);font-family:'Space Mono',monospace;font-size:11px;letter-spacing:0.08em;text-decoration:underline;cursor:pointer}
+  .blogout:hover{color:var(--ink)}
   .bpush{display:block;width:100%;margin-bottom:14px;padding:13px;border-radius:var(--radius);background:var(--chrome);color:#0d0d0d;border:none;font-family:'Space Mono',monospace;font-size:12px;letter-spacing:0.08em;text-transform:uppercase;font-weight:700;cursor:pointer;transition:transform .25s}
   .bpush:hover{transform:translateY(-2px)}
   .bpush.on{background:none;border:var(--bw) solid var(--line);color:var(--mut);font-weight:400;cursor:default}
@@ -503,12 +524,14 @@
 <!-- ============================ RÉSERVATION ============================ -->
 <section id="reserver" class="sect">
   <div class="reveal wrap" data-reveal>
-    <div class="eyebrow">RÉSERVATION</div>
-    <h2 class="head">Réservez</h2>
+    <div id="resHead">
+      <div class="eyebrow">RÉSERVATION</div>
+      <h2 class="head">Réservez</h2>
+    </div>
     <div class="res-card" id="resCard"></div>
     <div id="myBookings"></div>
 
-    <div style="margin-top:22px">
+    <div style="margin-top:22px" id="barberToggleWrap">
       <button class="barber-toggle" id="barberToggle">// Espace barber</button>
     </div>
     <div id="barberPane"></div>
@@ -866,6 +889,7 @@ const App = {
     barberCalY:0, barberCalM:0,
     adminPwInput:'', cmsUploading:false, cmsError:'', textEdit:null, textSaved:false, modifsOpen:false,
     contacts:null, contactsAsk:false,
+    barberPanel:null, bkName:'', bkPhone:'', bkService:null, bkDate:'', bkSlot:null, periodFrom:'', periodTo:'',
   },
   MONTHS_AHEAD: 12,   // nombre de mois consultables vers l'avenir
 
@@ -1435,6 +1459,48 @@ const App = {
     const bookings = await this.fetchStore();
     this.set({ bookings });
   },
+  // le barber crée lui-même une réservation (nom + prestation + tél)
+  async barberBook(){
+    const s = this.state;
+    const name = (s.bkName || '').trim();
+    const phone = (s.bkPhone || '').trim();
+    const svc = SERVICES.find(x => x.no === s.bkService);
+    const date = s.bkDate || s.barberDay;
+    const slot = s.bkSlot;
+    if (!name){ this.set({ barberError:'Indiquez le nom du client.' }); return; }
+    if (!svc){ this.set({ barberError:'Choisissez une prestation.' }); return; }
+    if (!date || !slot){ this.set({ barberError:'Choisissez un jour et un créneau.' }); return; }
+    this.set({ submitting:true, barberError:'' });
+    const key = date + '_' + slot;
+    const fresh = await this.fetchStore();
+    if (fresh[key]){ this.set({ bookings:fresh, submitting:false, bkSlot:null, barberError:'Ce créneau est déjà pris.' }); return; }
+    const tok = Math.random().toString(36).slice(2, 10);
+    const ok = await this.putStore(key, { name, service:svc.name, serviceNo:svc.no, price:svc.price, ts:Date.now(), tok });
+    if (!ok){ const after = await this.fetchStore(); this.set({ bookings:after, submitting:false, bkSlot:null, barberError:'Enregistrement impossible (créneau pris ?).' }); return; }
+    if (phone) this.saveContact({ key, name, phone, email:'' });   // pour voir le tél dans le planning
+    const bookings = await this.fetchStore();
+    this.set({ bookings, submitting:false, barberPanel:null, barberDay:date,
+      bkName:'', bkPhone:'', bkService:null, bkSlot:null, bkDate:'', barberError:'' });
+  },
+  // le barber bloque une période complète (congés) : retire les créneaux libres des jours ouverts
+  async barberBlockPeriod(){
+    const from = this.state.periodFrom, to = this.state.periodTo;
+    if (!from || !to){ this.set({ barberError:'Choisissez les deux dates.' }); return; }
+    if (from > to){ this.set({ barberError:'La date de fin doit être après le début.' }); return; }
+    this.set({ submitting:true, barberError:'' });
+    const puts = [];
+    let d = new Date(from + 'T00:00:00'); const end = new Date(to + 'T00:00:00');
+    while (d <= end){
+      const iso = isoOf(d);
+      if (this.isOpenDay(d)){
+        for (const t of TIMES){ const key = iso + '_' + t; if (!this.state.bookings[key]) puts.push(this.putStore(key, { name:'', service:'Bloqué', serviceNo:'X', blocked:true, ts:Date.now() })); }
+      }
+      d.setDate(d.getDate() + 1);
+    }
+    await Promise.all(puts);
+    const bookings = await this.fetchStore();
+    this.set({ bookings, submitting:false, barberPanel:null, periodFrom:'', periodTo:'', barberError:'' });
+  },
 
   /* ---------------- calendrier ---------------- */
   todayMidnight(){ const t = new Date(); t.setHours(0,0,0,0); return t; },
@@ -1680,6 +1746,7 @@ const App = {
         <input data-act="barberPw" type="password" value="${esc(s.barberPw)}" placeholder="MOT DE PASSE">
         ${s.barberError?`<div class="err">! ${esc(s.barberError)}</div>`:''}
         <button data-act="barberSubmit">Entrer</button>
+        <button class="blogout" data-act="closeplanning">Retour au site</button>
       </div>`;
     } else {
       const day = s.barberDay;
@@ -1724,7 +1791,7 @@ const App = {
           <h3>Planning</h3>
           <div class="acts">
             <button data-act="refresh">Actualiser</button>
-            <button data-act="logout">Quitter</button>
+            <button data-act="closeplanning">Fermer</button>
           </div>
         </div>
         ${this.renderBarberCal(s)}
@@ -1745,14 +1812,58 @@ const App = {
           : `<button class="bpush" data-act="enablePush">🔔 Activer les notifications sur cet appareil</button>`}
         ${s.barberError ? `<div class="err" style="margin:0 0 12px">! ${esc(s.barberError)}</div>` : ''}
         <div class="agenda">${rows}</div>
-        <div class="blegend">${legend}</div>`;
+        <div class="blegend">${legend}</div>
+        ${this.renderBarberPanel(s)}
+        <button class="blogout" data-act="logout">Se déconnecter</button>`;
     }
     return `<div class="barber-box">${inner}</div>`;
   },
+  renderBarberPanel(s){
+    const bkDay = s.bkDate || s.barberDay;
+    const bkFree = TIMES.filter(t => !s.bookings[bkDay + '_' + t]);
+    if (s.barberPanel === 'book'){
+      return `<div class="bpanel">
+        <div class="res-lab">// Nouvelle réservation</div>
+        <input class="bfield" data-act="bkName" value="${esc(s.bkName)}" placeholder="NOM DU CLIENT">
+        <input class="bfield" data-act="bkPhone" value="${esc(s.bkPhone)}" placeholder="TÉLÉPHONE (optionnel)" inputmode="tel">
+        <label class="blab">Prestation</label>
+        <div class="bpresta">${SERVICES.map(sv => `<button class="bpresta-row${sv.no===s.bkService?' sel':''}" data-act="bkService" data-no="${esc(sv.no)}"><span>${esc(sv.name)}</span><span>${esc(sv.price)}</span></button>`).join('')}</div>
+        <label class="blab">Jour</label>
+        <input class="bfield" type="date" data-act="bkDate" value="${esc(bkDay)}">
+        <label class="blab">Créneau — ${esc(this.labelOf(bkDay))}</label>
+        <div class="bslots">${bkFree.length ? bkFree.map(t => `<button class="bslot${s.bkSlot===t?' sel':''}" data-act="bkSlot" data-time="${t}">${frTime(t)}</button>`).join('') : '<span class="mut">Aucun créneau libre ce jour</span>'}</div>
+        ${s.barberError?`<div class="err">! ${esc(s.barberError)}</div>`:''}
+        <button class="submit" data-act="barberBook">${s.submitting?'Enregistrement…':'Enregistrer la réservation'}</button>
+        <button class="ghost bpanel-cancel" data-act="closepanel">Annuler</button>
+      </div>`;
+    }
+    if (s.barberPanel === 'period'){
+      return `<div class="bpanel">
+        <div class="res-lab">// Bloquer une période (congés)</div>
+        <label class="blab">Du</label><input class="bfield" type="date" data-act="periodFrom" value="${esc(s.periodFrom)}">
+        <label class="blab">Au</label><input class="bfield" type="date" data-act="periodTo" value="${esc(s.periodTo)}">
+        <p class="mut" style="font-size:11px;margin:8px 0">Tous les créneaux libres de cette période seront retirés du planning. Les rendez-vous déjà pris ne sont pas touchés.</p>
+        ${s.barberError?`<div class="err">! ${esc(s.barberError)}</div>`:''}
+        <button class="submit" data-act="barberBlockPeriod">${s.submitting?'Blocage…':'Bloquer la période'}</button>
+        <button class="ghost bpanel-cancel" data-act="closepanel">Annuler</button>
+      </div>`;
+    }
+    if (s.barberPanel === 'menu'){
+      return `<div class="bplus-wrap">
+        <button class="bplus" data-act="panelbook">＋ Nouvelle réservation</button>
+        <button class="bplus" data-act="panelperiod">＋ Bloquer une période</button>
+        <button class="ghost bpanel-cancel" data-act="closepanel">Fermer</button>
+      </div>`;
+    }
+    return `<button class="bplus solo" data-act="panelmenu">＋ Gérer mes créneaux</button>`;
+  },
 
   render(){
-    document.getElementById('resCard').innerHTML = this.renderCard();
-    document.getElementById('myBookings').innerHTML = this.renderMyBookings();
+    const bo = this.state.barberOpen;   // en mode espace barber : on masque la partie client
+    const rh = document.getElementById('resHead'); if (rh) rh.style.display = bo ? 'none' : '';
+    const tw = document.getElementById('barberToggleWrap'); if (tw) tw.style.display = bo ? 'none' : '';
+    document.getElementById('resCard').innerHTML = bo ? '' : this.renderCard();
+    document.getElementById('myBookings').innerHTML = bo ? '' : this.renderMyBookings();
     document.getElementById('barberPane').innerHTML = this.renderBarber();
     const modifs = document.getElementById('modifs');
     if (modifs){
@@ -1796,6 +1907,15 @@ document.getElementById('reserver').addEventListener('click', (e) => {
   else if (act === 'blockam')    App.blockHalf('am');
   else if (act === 'blockpm')    App.blockHalf('pm');
   else if (act === 'unblockday') App.unblockDay();
+  else if (act === 'closeplanning') App.set({ barberOpen:false, barberPanel:null });
+  else if (act === 'panelmenu')   App.set({ barberPanel:'menu', barberError:'' });
+  else if (act === 'panelbook')   App.set({ barberPanel:'book', barberError:'', bkDate: App.state.bkDate || App.state.barberDay });
+  else if (act === 'panelperiod') App.set({ barberPanel:'period', barberError:'' });
+  else if (act === 'closepanel')  App.set({ barberPanel:null, barberError:'' });
+  else if (act === 'bkService')   App.set({ bkService:t.dataset.no, barberError:'' });
+  else if (act === 'bkSlot')      App.set({ bkSlot:t.dataset.time, barberError:'' });
+  else if (act === 'barberBook')  App.barberBook();
+  else if (act === 'barberBlockPeriod') App.barberBlockPeriod();
   else if (act === 'enablePush') App.enablePush();
   else if (act === 'logout')  App.barberLogout();
   else if (act === 'cancel')  App.cancelBooking(t.dataset.key);
@@ -1810,6 +1930,10 @@ document.getElementById('reserver').addEventListener('input', (e) => {
   else if (act === 'email')    App.state.email = t.value;
   else if (act === 'barberPw') App.state.barberPw = t.value;
   else if (act === 'adminpw')  App.state.adminPwInput = t.value;
+  else if (act === 'bkName')   App.state.bkName = t.value;
+  else if (act === 'bkPhone')  App.state.bkPhone = t.value;
+  else if (act === 'periodFrom') App.state.periodFrom = t.value;
+  else if (act === 'periodTo')   App.state.periodTo = t.value;
   else if (act === 'txhero')   { if (App.state.textEdit) App.state.textEdit.heroIntro = t.value; }
   else if (act === 'txbio1')   { if (App.state.textEdit) App.state.textEdit.bio1 = t.value; }
   else if (act === 'txbio2')   { if (App.state.textEdit) App.state.textEdit.bio2 = t.value; }
@@ -1821,8 +1945,13 @@ document.getElementById('reserver').addEventListener('keydown', (e) => {
   if (t && e.key === 'Enter') App.barberSubmit();
 });
 document.getElementById('reserver').addEventListener('change', (e) => {
-  const t = e.target.closest('[data-act="photofile"]');
-  if (t) App.addPhoto(t);
+  const pf = e.target.closest('[data-act="photofile"]');
+  if (pf) { App.addPhoto(pf); return; }
+  const t = e.target.closest('[data-act]'); if (!t) return;
+  const act = t.dataset.act;
+  if (act === 'bkDate')        App.set({ bkDate: t.value, bkSlot: null, barberError:'' });
+  else if (act === 'periodFrom') App.set({ periodFrom: t.value });
+  else if (act === 'periodTo')   App.set({ periodTo: t.value });
 });
 document.getElementById('barberToggle').addEventListener('click', () => {
   App.set({ barberOpen: !App.state.barberOpen });
