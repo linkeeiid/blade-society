@@ -1922,7 +1922,7 @@ const App = {
           <p class="mut" style="font-size:11px;margin-bottom:10px">Entrez le mot de passe admin (le même que la page Modifications).</p>
           <input class="bfield" data-act="adminpw" type="password" value="${esc(s.adminPwInput||'')}" placeholder="MOT DE PASSE ADMIN">
           ${s.barberError?`<div class="err">! ${esc(s.barberError)}</div>`:''}
-          <button class="submit" data-act="loadcontactspw">Valider</button>
+          <button class="submit" data-act="adminpwsave">Valider</button>
           <button class="ghost bpanel-cancel" data-act="closepanel">Annuler</button>
         </div>`;
       }
@@ -2005,7 +2005,7 @@ const App = {
 };
 
 /* ---------------- délégation d'événements ---------------- */
-document.getElementById('reserver').addEventListener('click', (e) => {
+function onResClick(e){
   const t = e.target.closest('[data-act]'); if (!t) return;
   const act = t.dataset.act;
   if (act === 'day')          App.set({ selectedDate:t.dataset.iso, selectedSlot:null, confirmed:null, error:'' });
@@ -2057,8 +2057,8 @@ document.getElementById('reserver').addEventListener('click', (e) => {
   else if (act === 'logout')  App.barberLogout();
   else if (act === 'cancel')  App.cancelBooking(t.dataset.key);
   else if (act === 'barberSubmit') App.barberSubmit();
-});
-document.getElementById('reserver').addEventListener('input', (e) => {
+}
+function onResInput(e){
   const t = e.target.closest('[data-act]'); if (!t) return;
   const act = t.dataset.act;
   // mise à jour sans re-render pour ne pas perdre le focus
@@ -2078,12 +2078,12 @@ document.getElementById('reserver').addEventListener('input', (e) => {
   else if (act === 'txbio2')   { if (App.state.textEdit) App.state.textEdit.bio2 = t.value; }
   else if (act === 'txsvcname'){ if (App.state.textEdit) App.state.textEdit.services[+t.dataset.i].name = t.value; }
   else if (act === 'txsvcprice'){ if (App.state.textEdit) App.state.textEdit.services[+t.dataset.i].price = t.value; }
-});
-document.getElementById('reserver').addEventListener('keydown', (e) => {
+}
+function onResKeydown(e){
   const t = e.target.closest('[data-act="barberPw"]');
   if (t && e.key === 'Enter') App.barberSubmit();
-});
-document.getElementById('reserver').addEventListener('change', (e) => {
+}
+function onResChange(e){
   const pf = e.target.closest('[data-act="photofile"]');
   if (pf) { App.addPhoto(pf); return; }
   const t = e.target.closest('[data-act]'); if (!t) return;
@@ -2091,6 +2091,14 @@ document.getElementById('reserver').addEventListener('change', (e) => {
   if (act === 'bkDate')        App.set({ bkDate: t.value, bkSlot: null, barberError:'' });
   else if (act === 'periodFrom') App.set({ periodFrom: t.value });
   else if (act === 'periodTo')   App.set({ periodTo: t.value });
+}
+// écoute les mêmes actions sur la zone client (#reserver) ET l'overlay planning (#planning)
+['reserver','planning'].forEach(function(id){
+  const el = document.getElementById(id); if (!el) return;
+  el.addEventListener('click', onResClick);
+  el.addEventListener('input', onResInput);
+  el.addEventListener('keydown', onResKeydown);
+  el.addEventListener('change', onResChange);
 });
 document.getElementById('barberToggle').addEventListener('click', () => {
   App.openPlanning();
