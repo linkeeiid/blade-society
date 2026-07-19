@@ -10,9 +10,12 @@
      BREVO_API_KEY  (secret)  = clé API Brevo (xkeysib-...)
      SENDER_EMAIL   (texte)   = contact@bladesociety.fr  (expéditeur vérifié dans Brevo)
      SENDER_NAME    (texte)   = Blade Society
-   SMS client (routes POST /sms et /otp/*, via Brevo, PAYANT) :
+   SMS client (via Brevo, PAYANT) — 2 SMS maximum par client :
      SMS_SENDER     (texte)   = nom expéditeur SMS, 11 caractères max (ex: BladeScy)
      -> sans cette variable, aucun SMS n'est envoyé et la réservation reste possible
+     1. code de vérification à la 1re réservation d'un numéro (POST /otp/send, plafonné)
+     2. rappel 24h avant le rendez-vous (Cron interne)
+     La confirmation du rendez-vous se fait UNIQUEMENT par email.
    Rappels automatiques (Cron Trigger) : email ~4h avant + SMS ~24h avant
      FIREBASE_DB_URL (texte)  = https://blade-society-default-rtdb.europe-west1.firebasedatabase.app
      SITE_URL        (texte, optionnel) = https://bladesociety.fr
@@ -145,15 +148,13 @@ export default {
         return reply({ ok: r.ok, status: r.status }, 200, cors);
       }
 
-      /* ====== SMS de confirmation au client (via Brevo) ====== */
-      if (url.pathname === '/sms' && req.method === 'POST') {
-        if (!env.BREVO_API_KEY || !env.SMS_SENDER) return reply({ error: 'sms not configured' }, 503, cors);
-        const b = await req.json();
-        const to = normalizeFrPhone(b && b.to_phone);
-        if (!to || !b.content) return reply({ error: 'bad sms' }, 400, cors);
-        const r = await sendBrevoSms(to, b.content, env);
-        return reply({ ok: r.ok, status: r.status }, 200, cors);
-      }
+      /* La route publique POST /sms a été SUPPRIMÉE (2026-07-19).
+         Elle envoyait n'importe quel texte à n'importe quel numéro sans aucun contrôle :
+         une fois SMS_SENDER activé, n'importe qui connaissant l'URL du Worker pouvait
+         vider le crédit SMS de Giovany. Plus aucun appelant légitime depuis que la
+         confirmation de rendez-vous se fait uniquement par email.
+         Les seuls envois de SMS restants sont le code de vérification (/otp/send,
+         plafonné) et le rappel 24h (Cron interne). */
 
       /* ====== Vérification du numéro par SMS : envoi du code ======
          Ne consomme un SMS que pour un numéro jamais vérifié. */
@@ -185,7 +186,13 @@ export default {
         if (nIp >= OTP_MAX_PER_IP) return reply({ error: 'too_many' }, 429, cors);
 
         const code = String(100000 + (crypto.getRandomValues(new Uint32Array(1))[0] % 900000));
-        const r = await sendBrevoSms(to, 'Blade Society\nVotre code de confirmation : ' + code + '\nValable 10 minutes.', env);
+        // rappel du créneau en attente : le SMS se suffit à lui-même (on reste sur 1 seul SMS facturé)
+        const slotTxt = String((b && b.slot) || '').replace(/[^0-9A-Za-z\s:\/h.-]/g, '').slice(0, 40).trim();
+        const content = 'Blade Society\n'
+          + 'Votre code de confirmation : ' + code + '\n'
+          + (slotTxt ? 'RDV du ' + slotTxt + '\n' : '')
+          + 'Valable 10 minutes.';
+        const r = await sendBrevoSms(to, content, env);
         if (!r.ok) return reply({ error: 'sms_failed', status: r.status }, 502, cors);
         await env.SUBS.put('otp:' + to, JSON.stringify({ code, ts: nowSec, tries: 0 }), { expirationTtl: OTP_TTL_S });
         await env.SUBS.put('otprl:' + to, String(nPhone + 1), { expirationTtl: 3600 });

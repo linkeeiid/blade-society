@@ -225,6 +225,10 @@
   .lb-next{right:18px}
   .lb-count{position:absolute;bottom:22px;left:50%;transform:translateX(-50%);font-family:'Space Mono',monospace;font-size:12px;letter-spacing:0.18em;color:var(--mut)}
   @media(max-width:640px){.lb-nav{width:42px;height:54px;font-size:22px}.lb-prev{left:8px}.lb-next{right:8px}}
+  /* photo zoomée : les flèches gêneraient le déplacement dans l'image */
+  .lb.zoomed .lb-nav{opacity:0;pointer-events:none}
+  .lb.zoomed img{cursor:grab;border-color:transparent;box-shadow:none}
+  .lb-nav{transition:opacity .25s}
 
   /* ============================ RÉSERVATION ============================ */
   #reserver{background:var(--panel);border-top:var(--bw) solid var(--line)}
@@ -1008,9 +1012,11 @@ loadContent();
     lbImg.src = GALLERY[cur].src;
     lbImg.alt = 'Réalisation Blade Society n°' + (cur + 1);
     lbCount.textContent = (cur + 1) + ' / ' + GALLERY.length;
+    resetImg(false);                       // on repart toujours de la photo entière
   };
-  const open = (i) => { show(i); lb.classList.add('open'); document.body.style.overflow = 'hidden'; };
-  const close = () => { lb.classList.remove('open'); document.body.style.overflow = ''; };
+  // on efface la transition en ligne pour laisser l'animation d'ouverture du CSS se jouer
+  const open = (i) => { show(i); lbImg.style.transition = ''; lb.classList.add('open'); document.body.style.overflow = 'hidden'; };
+  const close = () => { lb.classList.remove('open'); document.body.style.overflow = ''; resetImg(false); };
 
   document.getElementById('gallery').addEventListener('click', (e) => {
     const cell = e.target.closest('.gcell'); if (!cell) return;
@@ -1029,26 +1035,83 @@ loadContent();
     else if (e.key === 'ArrowRight') show(cur + 1);
   });
 
-  /* ---- gestes tactiles : glisser pour changer / glisser vers le bas pour fermer (façon Snapchat) ---- */
-  let sx = 0, sy = 0, dragging = false, moved = false;
-  const resetImg = (anim) => {
+  /* ---- gestes tactiles ----
+     pincer à deux doigts (ou double-tap) pour zoomer, puis glisser pour se déplacer dans la photo.
+     Photo non zoomée : glisser = photo suivante/précédente, glisser vers le bas = fermer. */
+  const MAX_ZOOM = 4, TAP_ZOOM = 2.5;
+  const pts = new Map();                                   // doigts actuellement posés
+  let scale = 1, tx = 0, ty = 0;                           // zoom et décalage courants
+  let startDist = 0, startScale = 1, startTx = 0, startTy = 0;
+  let sx = 0, sy = 0, dragging = false, moved = false, pinched = false, lastTap = 0;
+
+  const zoomed = () => scale > 1.02;
+  // empêche de faire sortir la photo de l'écran quand elle est zoomée
+  const clampPan = () => {
+    const maxX = Math.max(0, (lbImg.offsetWidth  * scale - window.innerWidth)  / 2);
+    const maxY = Math.max(0, (lbImg.offsetHeight * scale - window.innerHeight) / 2);
+    tx = Math.min(maxX, Math.max(-maxX, tx));
+    ty = Math.min(maxY, Math.max(-maxY, ty));
+  };
+  const apply = (anim) => {
+    lbImg.style.transition = anim ? 'transform .25s ease, opacity .25s ease' : 'none';
+    lbImg.style.transform = `translate(${tx}px, ${ty}px) scale(${scale})`;
+    lb.classList.toggle('zoomed', zoomed());
+  };
+  const resetImg = (anim) => {                             // retour à la photo entière
+    scale = 1; tx = 0; ty = 0;
     lbImg.style.transition = anim ? 'transform .25s ease, opacity .25s ease' : 'none';
     lbImg.style.transform = '';
     lbImg.style.opacity = '';
+    lb.classList.remove('zoomed');
   };
   lbImg.addEventListener('pointerdown', (e) => {
-    dragging = true; moved = false; sx = e.clientX; sy = e.clientY;
-    lbImg.style.transition = 'none';
     lbImg.setPointerCapture(e.pointerId);
+    pts.set(e.pointerId, { x:e.clientX, y:e.clientY });
+    lbImg.style.transition = 'none';
+    if (pts.size === 2){                                   // début d'un pincement
+      const [a, b] = [...pts.values()];
+      startDist = Math.hypot(b.x - a.x, b.y - a.y);
+      startScale = scale; startTx = tx; startTy = ty;
+      pinched = true; dragging = false; moved = true;
+    } else if (pts.size === 1){
+      dragging = true; moved = false; pinched = false;
+      sx = e.clientX; sy = e.clientY; startTx = tx; startTy = ty;
+    }
   });
+
   lbImg.addEventListener('pointermove', (e) => {
+    if (!pts.has(e.pointerId)) return;
+    pts.set(e.pointerId, { x:e.clientX, y:e.clientY });
+    if (pts.size >= 2){                                    // pincement -> zoom
+      const [a, b] = [...pts.values()];
+      const d = Math.hypot(b.x - a.x, b.y - a.y);
+      if (startDist > 0){
+        scale = Math.min(MAX_ZOOM, Math.max(1, startScale * (d / startDist)));
+        tx = startTx; ty = startTy; clampPan(); apply(false);
+      }
+      return;
+    }
     if (!dragging) return;
     const dx = e.clientX - sx, dy = e.clientY - sy;
     if (Math.abs(dx) > 6 || Math.abs(dy) > 6) moved = true;
-    lbImg.style.transform = `translate(${dx}px, ${dy}px)`;
-    lbImg.style.opacity = String(1 - Math.min(0.7, Math.abs(dy) / 420));
+    if (zoomed()){                                         // zoomée -> on se déplace dedans
+      tx = startTx + dx; ty = startTy + dy; clampPan(); apply(false);
+    } else {                                               // entière -> navigation / fermeture
+      lbImg.style.transform = `translate(${dx}px, ${dy}px)`;
+      lbImg.style.opacity = String(1 - Math.min(0.7, Math.abs(dy) / 420));
+    }
   });
+
   const endDrag = (e) => {
+    pts.delete(e.pointerId);
+    if (pts.size === 1){                                   // un doigt reste après le pincement
+      const p = [...pts.values()][0];
+      sx = p.x; sy = p.y; startTx = tx; startTy = ty; dragging = true;
+      return;
+    }
+    if (pts.size > 0) return;
+    if (pinched){ pinched = false; dragging = false; apply(true); return; }  // pas de navigation après un zoom
+    if (zoomed()){ dragging = false; apply(true); return; }                  // on garde le cadrage
     if (!dragging) return;
     dragging = false;
     const dx = e.clientX - sx, dy = e.clientY - sy;
@@ -1059,8 +1122,24 @@ loadContent();
     else resetImg(true);                                            // sinon -> revient en place
   };
   lbImg.addEventListener('pointerup', endDrag);
-  lbImg.addEventListener('pointercancel', () => { dragging = false; resetImg(true); });
-  lbImg.addEventListener('click', (e) => { if (moved) { e.stopPropagation(); e.preventDefault(); } });
+  lbImg.addEventListener('pointercancel', (e) => { pts.delete(e.pointerId); dragging = false; pinched = false; if (!zoomed()) resetImg(true); });
+
+  lbImg.addEventListener('click', (e) => {
+    if (moved) { e.stopPropagation(); e.preventDefault(); return; }
+    e.stopPropagation();
+    const now = Date.now();
+    if (now - lastTap < 320){                              // double-tap -> zoom sur l'endroit touché
+      lastTap = 0;
+      if (zoomed()) { resetImg(true); return; }
+      const r = lbImg.getBoundingClientRect();
+      scale = TAP_ZOOM;
+      tx = -TAP_ZOOM * (e.clientX - (r.left + r.width / 2));
+      ty = -TAP_ZOOM * (e.clientY - (r.top + r.height / 2));
+      clampPan(); apply(true);
+      return;
+    }
+    lastTap = now;
+  });
 })();
 
 /* ============================================================
@@ -1209,23 +1288,11 @@ const App = {
       });
     } catch(e){}
   },
-  // SMS de CONFIRMATION au client (via le Worker -> Brevo, payant). Texte SANS accents (GSM-7, coût maîtrisé).
-  // Envoyé UNIQUEMENT à la réservation : modif/annulation se font via l'email (pas de SMS = pas de surcoût).
-  async smsClient(b){
-    if (!CFG.PUSH_ENDPOINT || !(b.tel || b.phone)) return;
-    // texte court, sans accents : tient en UN seul SMS facturé (les détails d'accès sont dans l'email)
-    const content =
-      'Blade Society\n' +
-      'RDV confirme le ' + this.smsDate(b.date) + ' a ' + frTime(b.time) + '.\n' +
-      'Acces au salon, modification et annulation : tout est dans votre email de confirmation.\n' +
-      'A bientot !';
-    try {
-      await fetch(CFG.PUSH_ENDPOINT.replace(/\/$/, '') + '/sms', {
-        method:'POST', headers:{'Content-Type':'application/json'},
-        body: JSON.stringify({ to_phone: b.tel || b.phone, content }),
-      });
-    } catch(e){}
-  },
+  /* Pas de SMS de confirmation : la confirmation du rendez-vous se fait UNIQUEMENT par email
+     (il contient les accès au salon, le numéro de Giovany et le lien annuler/déplacer).
+     Le client ne reçoit donc que 2 SMS au maximum :
+       - le code de vérification, à sa toute première réservation seulement
+       - le rappel, 24h avant le rendez-vous (envoyé par le Cron du Worker) */
   smsDate(iso){
     const p = String(iso).split('-');
     return p.length === 3 ? p[2] + '/' + p[1] : String(iso);
@@ -1276,9 +1343,13 @@ const App = {
     this.set({ submitting:true, error:'', otpError:'' });
     let r = null, data = {};
     try {
+      // on joint le créneau en attente : il apparaît dans le SMS du code
+      const s = this.state;
+      const when = (s.selectedDate && s.selectedSlot)
+        ? this.smsDate(s.selectedDate) + ' a ' + frTime(s.selectedSlot) : '';
       r = await fetch(CFG.PUSH_ENDPOINT.replace(/\/$/, '') + '/otp/send', {
         method:'POST', headers:{'Content-Type':'application/json'},
-        body: JSON.stringify({ phone: tel }),
+        body: JSON.stringify({ phone: tel, slot: when }),
       });
       data = await r.json();
     } catch(e){ return this.otpBypass(tel); }
@@ -1365,8 +1436,7 @@ const App = {
     }
     this.notify(full);        // notification Telegram au barber (en arrière-plan)
     this.pushBarber(full);    // notification push (app) au barber (en arrière-plan)
-    this.emailClient(full);   // email de confirmation au client (en arrière-plan)
-    this.smsClient(full);     // SMS de confirmation au client (en arrière-plan)
+    this.emailClient(full);   // email de confirmation au client (en arrière-plan) — pas de SMS ici
     this.saveContact(full);   // tél du client (privé, lisible seulement par le barber)
     try { rlt.push(now); localStorage.setItem('bs_bk_times', JSON.stringify(rlt)); } catch(e){}
     // on garde aussi ses coordonnées : elles servent à l'espace « Mes rendez-vous »
