@@ -156,6 +156,38 @@ export default {
          Les seuls envois de SMS restants sont le code de vérification (/otp/send,
          plafonné) et le rappel 24h (Cron interne). */
 
+      /* ====== Rappel immédiat : rendez-vous pris à moins de 24h ======
+         Appelé par le site juste après une réservation. La fenêtre des 24h ne se
+         présentera jamais pour ces créneaux : le rappel part donc tout de suite.
+         Sûr par construction : le seul paramètre est la clé du rendez-vous.
+         Le numéro vient du KV (jamais de la requête), le texte est figé, le
+         rendez-vous doit exister dans Firebase et rester à moins de 24h, et le
+         dédoublonnage `reminded24` interdit plus d'un SMS par rendez-vous. */
+      if (url.pathname === '/reminder-now' && req.method === 'POST') {
+        const b = await req.json();
+        const key = String((b && b.key) || '');
+        if (!/^\d{4}-\d{2}-\d{2}_\d{2}:\d{2}$/.test(key)) return reply({ error: 'bad_key' }, 400, cors);
+        if (!env.SMS_SENDER || !env.FIREBASE_DB_URL) return reply({ ok: true, skipped: 'sms_off' }, 200, cors);
+        const reminded24 = JSON.parse((await env.SUBS.get('reminded24')) || '{}');
+        if (reminded24[key]) return reply({ ok: true, skipped: 'already_sent' }, 200, cors);
+        let slot = null;                                   // le rendez-vous doit exister pour de vrai
+        try {
+          const rs = await fetch(env.FIREBASE_DB_URL.replace(/\/$/, '') + '/slots/' + encodeURIComponent(key) + '.json');
+          slot = await rs.json();
+        } catch (e) { return reply({ error: 'lookup_failed' }, 502, cors); }
+        if (!slot || slot.blocked) return reply({ error: 'not_found' }, 404, cors);
+        const now = parisNow();
+        const mins = minutesUntil(key, now);
+        if (mins <= 0 || mins > 1430) return reply({ ok: true, skipped: 'not_urgent' }, 200, cors);
+        const contacts = JSON.parse((await env.SUBS.get('contacts')) || '{}');
+        const c = contacts[key];
+        if (!c || !c.phone) return reply({ ok: true, skipped: 'no_phone' }, 200, cors);
+        const us = key.indexOf('_');
+        const r2 = await sendBrevoSms(c.phone, reminderSms(key.slice(0, us), key.slice(us + 1), now.date), env);
+        if (r2.ok) { reminded24[key] = true; await env.SUBS.put('reminded24', JSON.stringify(reminded24)); }
+        return reply({ ok: r2.ok, sent: r2.ok }, 200, cors);
+      }
+
       /* ====== Vérification du numéro par SMS : envoi du code ======
          Ne consomme un SMS que pour un numéro jamais vérifié. */
       if (url.pathname === '/otp/send' && req.method === 'POST') {
@@ -276,6 +308,22 @@ async function sendBrevoSms(phone, content, env) {
 // TTL restant d'un code de vérification (KV impose 60 s minimum)
 function nowLeft(ts) {
   return Math.max(60, OTP_TTL_S - (Math.floor(Date.now() / 1000) - ts));
+}
+/* Texte du rappel client (sans accents : tient en 1 seul SMS facturé).
+   « aujourd'hui » quand le rendez-vous a été pris à moins de 24h du créneau. */
+function reminderSms(date, time, todayIso) {
+  const d = date.split('-');
+  const quand = (date === todayIso) ? "aujourd'hui" : 'demain';
+  return 'Blade Society\n'
+    + 'Rappel : votre RDV est ' + quand + ' ' + d[2] + '/' + d[1] + ' a ' + frTimeFR(time) + '.\n'
+    + 'Modification ou annulation : lien dans votre email.\n'
+    + 'A bientot !';
+}
+// minutes restantes avant un créneau "aaaa-mm-jj_hh:mm", vues de Paris
+function minutesUntil(key, now) {
+  const us = key.indexOf('_');
+  const date = key.slice(0, us), tp = key.slice(us + 1).split(':');
+  return dayGap(now.date, date) * 1440 + (parseInt(tp[0], 10) * 60 + parseInt(tp[1], 10)) - now.minutes;
 }
 // nombre de jours entre deux dates ISO (aaaa-mm-jj)
 function dayGap(isoA, isoB) {
@@ -512,14 +560,12 @@ async function sendReminders(env) {
       try { await sendBrevoEmail(b, env); reminded[key] = true; changed = true; } catch (e) {}
     }
 
-    /* --- rappel SMS ~24h avant (texte sans accents = 1 seul SMS facturé) --- */
-    if (minsUntil >= 1430 && minsUntil <= 1450 && !reminded24[key] && c.phone && env.SMS_SENDER) {
-      const d = date.split('-');
-      const content = 'Blade Society\n'
-        + 'Rappel : votre RDV est demain ' + d[2] + '/' + d[1] + ' a ' + frTimeFR(time) + '.\n'
-        + 'Modification ou annulation : lien dans votre email.\n'
-        + 'A bientot !';
-      const r = await sendBrevoSms(c.phone, content, env);
+    /* --- rappel SMS ~24h avant ---
+       La condition n'est pas une fenêtre mais un plafond : tout rendez-vous à moins de 24h
+       et pas encore rappelé reçoit son SMS. Ça couvre le cas d'une réservation prise
+       à moins de 24h du créneau, pour laquelle la fenêtre des 24h ne se présentera jamais. */
+    if (minsUntil > 0 && minsUntil <= 1450 && !reminded24[key] && c.phone && env.SMS_SENDER) {
+      const r = await sendBrevoSms(c.phone, reminderSms(date, time, now.date), env);
       if (r.ok) { reminded24[key] = true; changed24 = true; }
     }
   }

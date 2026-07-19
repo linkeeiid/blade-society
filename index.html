@@ -1288,6 +1288,20 @@ const App = {
       });
     } catch(e){}
   },
+  /* Rendez-vous pris à moins de 24h : le rappel part immédiatement, en même temps que l'email
+     de confirmation. Sans ça le client n'en recevrait aucun, la fenêtre des 24h étant déjà passée.
+     C'est le Worker qui décide (il vérifie le créneau et le délai) ; si l'appel échoue,
+     le Cron rattrape le coup au passage suivant. */
+  async remindIfSoon(b){
+    if (!CFG.PUSH_ENDPOINT || !b.key) return;
+    try {
+      await fetch(CFG.PUSH_ENDPOINT.replace(/\/$/, '') + '/reminder-now', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ key: b.key }),
+      });
+    } catch(e){}
+  },
+
   /* Pas de SMS de confirmation : la confirmation du rendez-vous se fait UNIQUEMENT par email
      (il contient les accès au salon, le numéro de Giovany et le lien annuler/déplacer).
      Le client ne reçoit donc que 2 SMS au maximum :
@@ -1437,7 +1451,8 @@ const App = {
     this.notify(full);        // notification Telegram au barber (en arrière-plan)
     this.pushBarber(full);    // notification push (app) au barber (en arrière-plan)
     this.emailClient(full);   // email de confirmation au client (en arrière-plan) — pas de SMS ici
-    this.saveContact(full);   // tél du client (privé, lisible seulement par le barber)
+    // le tél doit être enregistré AVANT de demander le rappel : c'est là que le Worker le lit
+    Promise.resolve(this.saveContact(full)).then(() => this.remindIfSoon(full));
     try { rlt.push(now); localStorage.setItem('bs_bk_times', JSON.stringify(rlt)); } catch(e){}
     // on garde aussi ses coordonnées : elles servent à l'espace « Mes rendez-vous »
     // (annuler / déplacer et envoyer l'email correspondant, sans re-saisie)
@@ -1612,7 +1627,9 @@ const App = {
     }
     await this.delStore(r.oldKey);                 // libère l'ancien créneau
     this.removeContact(r.oldKey);
-    this.saveContact({ key:newKey, phone:r.phone, name:r.name, email:r.email });   // coordonnées reportées sur le nouveau créneau
+    // coordonnées reportées, puis rappel immédiat si le nouveau créneau est à moins de 24h
+    Promise.resolve(this.saveContact({ key:newKey, phone:r.phone, name:r.name, email:r.email }))
+      .then(() => this.remindIfSoon({ key:newKey }));
     const bookings = await this.fetchStore();
     const newDate = this.state.selectedDate, newTime = this.state.selectedSlot;
     const ctx = { name:r.name, email:r.email, phone:r.phone, service:r.service, price:r.price,
