@@ -823,6 +823,14 @@ function slotStillOpen(iso, t){
   return timeToMin(t) > parisNowMin() + BOOK_LEAD_MIN;
 }
 
+// normalise une date saisie -> "aaaa-mm-jj" (null si invalide, y compris 31/02)
+function normDate(v){
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(v || '').trim());
+  if (!m) return null;
+  const y = +m[1], mo = +m[2], da = +m[3];
+  const dt = new Date(y, mo - 1, da);
+  return (dt.getFullYear() === y && dt.getMonth() === mo - 1 && dt.getDate() === da) ? m[0] : null;
+}
 // normalise une heure saisie à la main -> "HH:MM" (null si invalide)
 function normTime(v){
   const m = /^(\d{1,2}):(\d{2})$/.exec(String(v || '').trim());
@@ -1152,7 +1160,7 @@ const App = {
     name:'', phone:'', email:'', error:'', submitting:false,
     otpStep:false, otpCode:'', otpError:'', otpTel:'', otpSentAt:0,
     bookings:{}, confirmed:null, myBookings:[], manage:null, reschedule:null, myRdvOpen:false,
-    editKey:null, editTime:'',
+    editKey:null, editDate:'', editTime:'',
     barberOpen:false, barberPw:'', barberAuthed:false, barberError:'', barberDay:'', pushOn:false,
     barberCalY:0, barberCalM:0,
     adminPwInput:'', cmsUploading:false, cmsError:'', textEdit:null, textSaved:false, modifsOpen:false, planningOpen:false,
@@ -1964,15 +1972,16 @@ const App = {
     const oldKey = s.editKey; if (!oldKey) return;
     const t = normTime(s.editTime);
     if (!t){ this.set({ barberError:'Heure invalide — format 15:00.' }); return; }
-    const us = oldKey.indexOf('_');
-    const date = oldKey.slice(0, us), oldTime = oldKey.slice(us + 1);
+    // date vide = on garde le jour actuel du rendez-vous (seule l'heure change)
+    const date = normDate(s.editDate || oldKey.slice(0, oldKey.indexOf('_')));
+    if (!date){ this.set({ barberError:'Date invalide.' }); return; }
     const newKey = date + '_' + t;
-    if (newKey === oldKey){ this.set({ editKey:null, editTime:'', barberError:'' }); return; }
+    if (newKey === oldKey){ this.set({ editKey:null, editDate:'', editTime:'', barberError:'' }); return; }
     this.set({ submitting:true, barberError:'' });
     if (!this.state.contacts) await this.loadContacts();   // pour reporter les coordonnées du client
     const fresh = await this.fetchStore();
     const sl = fresh[oldKey];
-    if (!sl){ this.set({ bookings:fresh, submitting:false, editKey:null, editTime:'', barberError:'Ce rendez-vous n’existe plus.' }); return; }
+    if (!sl){ this.set({ bookings:fresh, submitting:false, editKey:null, editDate:'', editTime:'', barberError:'Ce rendez-vous n’existe plus.' }); return; }
     if (fresh[newKey]){ this.set({ bookings:fresh, submitting:false, barberError:'Ce créneau est déjà pris.' }); return; }
     const ok = await this.putStore(newKey, Object.assign({}, sl, { ts:Date.now() }));   // même jeton
     if (!ok){
@@ -1988,7 +1997,10 @@ const App = {
     }
     const bookings = await this.fetchStore();
     await this.loadContacts();
-    this.set({ bookings, submitting:false, editKey:null, editTime:'', barberError:'' });
+    // on suit le rendez-vous s'il a changé de jour, sinon Giovany le croirait disparu
+    const [ny, nm] = date.split('-').map(Number);
+    this.set({ bookings, submitting:false, editKey:null, editDate:'', editTime:'', barberError:'',
+      barberDay: date, barberCalY: ny, barberCalM: nm - 1 });
   },
   // le barber bloque une période complète (congés) : retire les créneaux libres des jours ouverts
   async barberBlockPeriod(){
@@ -2341,10 +2353,13 @@ const App = {
               <button data-act="cancel" data-key="${esc(key)}">Libérer</button>
             </div>
           </div>` + (editing ? `<div class="aslot-edit">
-            <div class="ae-lab">Nouvelle heure pour ${esc(sl.name || 'ce client')} — le client sera prévenu par email.</div>
+            <div class="ae-lab">Déplacer le rendez-vous de ${esc(sl.name || 'ce client')}</div>
+            <label class="blab">Jour</label>
+            <input class="bfield" type="date" data-act="editDate" value="${esc(s.editDate)}">
+            <label class="blab">Heure</label>
             <input class="bfield" type="time" step="300" data-act="editTime" value="${esc(s.editTime)}">
             <div class="ae-acts">
-              <button class="submit" data-act="saveEditTime">${s.submitting ? 'Déplacement…' : 'Valider la nouvelle heure'}</button>
+              <button class="submit" data-act="saveEditTime">${s.submitting ? 'Déplacement…' : 'Valider le déplacement'}</button>
               <button class="ghost" data-act="cancelEditTime">Annuler</button>
             </div>
           </div>` : '');
@@ -2506,9 +2521,10 @@ function onResClick(e){
   else if (act === 'openmyrdv')  App.openMyRdv();
   else if (act === 'closemyrdv') App.closeMyRdv();
   else if (act === 'myrdvbook')  { App.closeMyRdv(); App.scrollToRes(); }
-  else if (act === 'edittime')   { const k = t.dataset.key; App.set({ editKey:k, editTime:k.slice(k.indexOf('_') + 1), barberError:'' }); }
+  else if (act === 'edittime')   { const k = t.dataset.key, u = k.indexOf('_');
+    App.set({ editKey:k, editDate:k.slice(0, u), editTime:k.slice(u + 1), barberError:'' }); }
   else if (act === 'saveEditTime')   App.barberMoveBooking();
-  else if (act === 'cancelEditTime') App.set({ editKey:null, editTime:'', barberError:'' });
+  else if (act === 'cancelEditTime') App.set({ editKey:null, editDate:'', editTime:'', barberError:'' });
   else if (act === 'managecancel') App.cancelManaged();
   else if (act === 'managemove')   App.moveManaged();
   else if (act === 'managebook')   App.set({ manage:null, confirmed:null });
@@ -2564,6 +2580,7 @@ function onResInput(e){
   else if (act === 'bkCustom') App.state.bkCustom = t.value;
   else if (act === 'otpCode')  App.state.otpCode = t.value.replace(/\D/g, '').slice(0, 6);
   else if (act === 'editTime') App.state.editTime = t.value;
+  else if (act === 'editDate') App.state.editDate = t.value;
   else if (act === 'periodFrom') App.state.periodFrom = t.value;
   else if (act === 'periodTo')   App.state.periodTo = t.value;
   else if (act === 'schedstart'){ const sc = App.state.scheduleEdit; if (sc) sc[+t.dataset.wd].ranges[+t.dataset.ri][0] = t.value; }
@@ -2594,6 +2611,7 @@ function onResChange(e){
   else if (act === 'email')    App.state.email = t.value;
   else if (act === 'bkCustom') App.set({ bkCustom: t.value, bkSlot: null, barberError:'' });
   else if (act === 'editTime') App.state.editTime = t.value;
+  else if (act === 'editDate') App.state.editDate = t.value;
 }
 // écoute les mêmes actions sur la zone client (#reserver), l'overlay planning (#planning)
 // et le panneau « Mes rendez-vous » (#myrdv) — tous trois sont hors de #reserver
