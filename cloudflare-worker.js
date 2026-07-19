@@ -10,16 +10,32 @@
      BREVO_API_KEY  (secret)  = clé API Brevo (xkeysib-...)
      SENDER_EMAIL   (texte)   = contact@bladesociety.fr  (expéditeur vérifié dans Brevo)
      SENDER_NAME    (texte)   = Blade Society
-   SMS de confirmation client (route POST /sms, via Brevo, payant) :
-     SMS_SENDER     (texte)   = nom expéditeur SMS, 11 caractères max (ex: BladeSoc)
-   Rappel automatique ~4h avant le RDV (Cron Trigger) :
+   SMS client (routes POST /sms et /otp/*, via Brevo, PAYANT) :
+     SMS_SENDER     (texte)   = nom expéditeur SMS, 11 caractères max (ex: BladeScy)
+     -> sans cette variable, aucun SMS n'est envoyé et la réservation reste possible
+   Rappels automatiques (Cron Trigger) : email ~4h avant + SMS ~24h avant
      FIREBASE_DB_URL (texte)  = https://blade-society-default-rtdb.europe-west1.firebasedatabase.app
      SITE_URL        (texte, optionnel) = https://bladesociety.fr
      + Cron Trigger à ajouter (Settings -> Triggers -> Cron) : toutes les 10 min
        expression cron equivalente : 0,10,20,30,40,50 * * * *
    Binding KV (Settings → Variables → KV Namespace Bindings) :
      Variable name = SUBS
+
+   VÉRIFICATION DU NUMÉRO PAR SMS (anti faux numéros / no-shows)
+   - POST /otp/send   {phone}        -> envoie un code à 6 chiffres
+                                        répond {skip:true} si le numéro est déjà vérifié (0 SMS)
+   - POST /otp/verify {phone, code}  -> valide le code et mémorise le numéro
+   Un numéro n'est vérifié qu'UNE FOIS : les réservations suivantes ne coûtent aucun SMS.
    ===================================================================== */
+
+/* --- réglages de la vérification par SMS --- */
+const OTP_TTL_S           = 600;            // durée de vie d'un code (10 min)
+const OTP_MAX_TRIES       = 5;              // essais de saisie avant invalidation
+const OTP_COOLDOWN_S      = 60;             // délai mini entre 2 envois au même numéro
+const OTP_MAX_PER_PHONE   = 3;              // codes max par numéro / heure
+const OTP_MAX_PER_IP      = 8;              // codes max par appareil (IP) / heure
+const OTP_MAX_PROBES_PER_IP = 30;           // requêtes max par appareil / heure (numéros déjà vérifiés inclus)
+const OTP_VERIFIED_TTL_S  = 180 * 24 * 3600; // un numéro vérifié le reste 180 jours
 
 export default {
   async fetch(req, env) {
@@ -135,12 +151,69 @@ export default {
         const b = await req.json();
         const to = normalizeFrPhone(b && b.to_phone);
         if (!to || !b.content) return reply({ error: 'bad sms' }, 400, cors);
-        const r = await fetch('https://api.brevo.com/v3/transactionalSMS/sms', {
-          method: 'POST',
-          headers: { 'api-key': env.BREVO_API_KEY, 'Content-Type': 'application/json', 'accept': 'application/json' },
-          body: JSON.stringify({ sender: env.SMS_SENDER, recipient: to, content: b.content, type: 'transactional' }),
-        });
+        const r = await sendBrevoSms(to, b.content, env);
         return reply({ ok: r.ok, status: r.status }, 200, cors);
+      }
+
+      /* ====== Vérification du numéro par SMS : envoi du code ======
+         Ne consomme un SMS que pour un numéro jamais vérifié. */
+      if (url.pathname === '/otp/send' && req.method === 'POST') {
+        const b = await req.json();
+        const to = normalizeFrPhone(b && b.phone);
+        if (!to) return reply({ error: 'bad_phone' }, 400, cors);
+
+        // borne TOUTES les requêtes d'un appareil, y compris pour un numéro déjà vérifié :
+        // empêche de tester en masse quels numéros sont clients du salon
+        const ip = req.headers.get('CF-Connecting-IP') || 'unknown';
+        const nProbe = parseInt((await env.SUBS.get('otpq:' + ip)) || '0', 10);
+        if (nProbe >= OTP_MAX_PROBES_PER_IP) return reply({ error: 'too_many' }, 429, cors);
+        await env.SUBS.put('otpq:' + ip, String(nProbe + 1), { expirationTtl: 3600 });
+
+        // numéro déjà vérifié -> aucun SMS, le client réserve directement
+        if (await env.SUBS.get('verified:' + to)) return reply({ ok: true, skip: true }, 200, cors);
+        if (!env.BREVO_API_KEY || !env.SMS_SENDER) return reply({ error: 'sms not configured' }, 503, cors);
+
+        // garde-fous anti-abus : protègent le crédit SMS de Giovany
+        const nowSec = Math.floor(Date.now() / 1000);
+        const prev = JSON.parse((await env.SUBS.get('otp:' + to)) || 'null');
+        if (prev && nowSec - prev.ts < OTP_COOLDOWN_S) {
+          return reply({ error: 'cooldown', retry_in: OTP_COOLDOWN_S - (nowSec - prev.ts) }, 429, cors);
+        }
+        const nPhone = parseInt((await env.SUBS.get('otprl:' + to)) || '0', 10);
+        if (nPhone >= OTP_MAX_PER_PHONE) return reply({ error: 'too_many' }, 429, cors);
+        const nIp = parseInt((await env.SUBS.get('otpip:' + ip)) || '0', 10);
+        if (nIp >= OTP_MAX_PER_IP) return reply({ error: 'too_many' }, 429, cors);
+
+        const code = String(100000 + (crypto.getRandomValues(new Uint32Array(1))[0] % 900000));
+        const r = await sendBrevoSms(to, 'Blade Society\nVotre code de confirmation : ' + code + '\nValable 10 minutes.', env);
+        if (!r.ok) return reply({ error: 'sms_failed', status: r.status }, 502, cors);
+        await env.SUBS.put('otp:' + to, JSON.stringify({ code, ts: nowSec, tries: 0 }), { expirationTtl: OTP_TTL_S });
+        await env.SUBS.put('otprl:' + to, String(nPhone + 1), { expirationTtl: 3600 });
+        await env.SUBS.put('otpip:' + ip, String(nIp + 1), { expirationTtl: 3600 });
+        return reply({ ok: true, sent: true }, 200, cors);
+      }
+
+      /* ====== Vérification du numéro par SMS : contrôle du code ====== */
+      if (url.pathname === '/otp/verify' && req.method === 'POST') {
+        const b = await req.json();
+        const to = normalizeFrPhone(b && b.phone);
+        const code = String((b && b.code) || '').replace(/\D/g, '');
+        if (!to || code.length !== 6) return reply({ error: 'bad_request' }, 400, cors);
+        const rec = JSON.parse((await env.SUBS.get('otp:' + to)) || 'null');
+        if (!rec) return reply({ error: 'expired' }, 400, cors);
+        if (rec.tries >= OTP_MAX_TRIES) {
+          await env.SUBS.delete('otp:' + to);
+          return reply({ error: 'too_many_tries' }, 429, cors);
+        }
+        if (rec.code !== code) {
+          rec.tries++;
+          const left = Math.max(0, nowLeft(rec.ts));
+          await env.SUBS.put('otp:' + to, JSON.stringify(rec), { expirationTtl: left });
+          return reply({ error: 'bad_code', tries_left: OTP_MAX_TRIES - rec.tries }, 400, cors);
+        }
+        await env.SUBS.delete('otp:' + to);
+        await env.SUBS.put('verified:' + to, '1', { expirationTtl: OTP_VERIFIED_TTL_S });
+        return reply({ ok: true, verified: true }, 200, cors);
       }
       if (url.pathname === '/gallery/order' && req.method === 'POST') {
         const { pw, ids } = await req.json();
@@ -178,6 +251,29 @@ function normalizeFrPhone(raw) {
   else if (s[0] === '0') s = '33' + s.slice(1);       // 06... -> 336...
   if (!/^\d{10,15}$/.test(s)) return '';              // garde-fou format
   return s;
+}
+
+/* ---------- Envoi d'un SMS via Brevo (payant) ---------- */
+async function sendBrevoSms(phone, content, env) {
+  const to = normalizeFrPhone(phone);
+  if (!to || !env.BREVO_API_KEY || !env.SMS_SENDER) return { ok: false, status: 0 };
+  try {
+    const r = await fetch('https://api.brevo.com/v3/transactionalSMS/sms', {
+      method: 'POST',
+      headers: { 'api-key': env.BREVO_API_KEY, 'Content-Type': 'application/json', 'accept': 'application/json' },
+      body: JSON.stringify({ sender: env.SMS_SENDER, recipient: to, content, type: 'transactional' }),
+    });
+    return { ok: r.ok, status: r.status };
+  } catch (e) { return { ok: false, status: 0 }; }
+}
+// TTL restant d'un code de vérification (KV impose 60 s minimum)
+function nowLeft(ts) {
+  return Math.max(60, OTP_TTL_S - (Math.floor(Date.now() / 1000) - ts));
+}
+// nombre de jours entre deux dates ISO (aaaa-mm-jj)
+function dayGap(isoA, isoB) {
+  const a = isoA.split('-').map(Number), b = isoB.split('-').map(Number);
+  return Math.round((Date.UTC(b[0], b[1] - 1, b[2]) - Date.UTC(a[0], a[1] - 1, a[2])) / 86400000);
 }
 
 /* ---------- Email de confirmation client (HTML) ---------- */
@@ -370,46 +466,66 @@ function parisNow() {
 
 /* ---------- Rappels automatiques : appelé par le Cron Trigger ---------- */
 async function sendReminders(env) {
-  if (!env.BREVO_API_KEY || !env.SENDER_EMAIL || !env.FIREBASE_DB_URL) return;
+  if (!env.BREVO_API_KEY || !env.FIREBASE_DB_URL) return;
   let slots = {};
   try {
     const r = await fetch(env.FIREBASE_DB_URL.replace(/\/$/, '') + '/slots.json');
     slots = (await r.json()) || {};
   } catch (e) { return; }
-  const contacts = JSON.parse((await env.SUBS.get('contacts')) || '{}');
-  const reminded = JSON.parse((await env.SUBS.get('reminded')) || '{}');
+  const contacts   = JSON.parse((await env.SUBS.get('contacts'))   || '{}');
+  const reminded   = JSON.parse((await env.SUBS.get('reminded'))   || '{}');  // email ~4h avant
+  const reminded24 = JSON.parse((await env.SUBS.get('reminded24')) || '{}');  // SMS   ~24h avant
   const now = parisNow();
   const site = (env.SITE_URL || 'https://bladesociety.fr').replace(/\/$/, '') + '/';
-  let changed = false;
+  let changed = false, changed24 = false;
   for (const key in slots) {
     const sl = slots[key];
     if (!sl || sl.blocked) continue;
     const us = key.indexOf('_');
     if (us < 0) continue;
     const date = key.slice(0, us), time = key.slice(us + 1);
-    if (date !== now.date) continue;                       // uniquement les RDV d'aujourd'hui
+    const gap = dayGap(now.date, date);
+    if (gap < 0 || gap > 1) continue;                      // seuls aujourd'hui et demain nous intéressent
     const tp = time.split(':');
     const apptMin = parseInt(tp[0], 10) * 60 + parseInt(tp[1], 10);
-    const diff = apptMin - now.minutes;
-    if (diff < 230 || diff > 250) continue;                // fenêtre ~4h avant
-    if (reminded[key]) continue;                           // déjà rappelé
+    const minsUntil = gap * 1440 + apptMin - now.minutes;  // minutes avant le RDV
     const c = contacts[key];
-    if (!c || !c.email) continue;                          // pas d'email connu -> pas de rappel
-    const manageUrl = site + '?rdv=' + encodeURIComponent(key) + '&t=' + encodeURIComponent(sl.tok || '')
-      + '&e=' + encodeURIComponent(c.email) + '&p=' + encodeURIComponent(c.phone || '');
-    const b = {
-      to_email: c.email, to_name: c.name || sl.name || '',
-      service: sl.service || '', price: sl.price || '',
-      date: prettyDateFR(date), slot: frTimeFR(time),
-      reminder: true, manage_url: manageUrl,
-    };
-    try { await sendBrevoEmail(b, env); reminded[key] = true; changed = true; } catch (e) {}
+    if (!c) continue;
+
+    /* --- rappel EMAIL ~4h avant (le Cron passe toutes les 10 min) --- */
+    if (minsUntil >= 230 && minsUntil <= 250 && !reminded[key] && c.email && env.SENDER_EMAIL) {
+      const manageUrl = site + '?rdv=' + encodeURIComponent(key) + '&t=' + encodeURIComponent(sl.tok || '')
+        + '&e=' + encodeURIComponent(c.email) + '&p=' + encodeURIComponent(c.phone || '');
+      const b = {
+        to_email: c.email, to_name: c.name || sl.name || '',
+        service: sl.service || '', price: sl.price || '',
+        date: prettyDateFR(date), slot: frTimeFR(time),
+        reminder: true, manage_url: manageUrl,
+      };
+      try { await sendBrevoEmail(b, env); reminded[key] = true; changed = true; } catch (e) {}
+    }
+
+    /* --- rappel SMS ~24h avant (texte sans accents = 1 seul SMS facturé) --- */
+    if (minsUntil >= 1430 && minsUntil <= 1450 && !reminded24[key] && c.phone && env.SMS_SENDER) {
+      const d = date.split('-');
+      const content = 'Blade Society\n'
+        + 'Rappel : votre RDV est demain ' + d[2] + '/' + d[1] + ' a ' + frTimeFR(time) + '.\n'
+        + 'Modification ou annulation : lien dans votre email.\n'
+        + 'A bientot !';
+      const r = await sendBrevoSms(c.phone, content, env);
+      if (r.ok) { reminded24[key] = true; changed24 = true; }
+    }
   }
   for (const k in reminded) {                              // purge des clés passées
     const d = k.slice(0, k.indexOf('_'));
     if (d && d < now.date) { delete reminded[k]; changed = true; }
   }
-  if (changed) await env.SUBS.put('reminded', JSON.stringify(reminded));
+  for (const k in reminded24) {
+    const d = k.slice(0, k.indexOf('_'));
+    if (d && d < now.date) { delete reminded24[k]; changed24 = true; }
+  }
+  if (changed)   await env.SUBS.put('reminded',   JSON.stringify(reminded));
+  if (changed24) await env.SUBS.put('reminded24', JSON.stringify(reminded24));
 }
 
 /* ---------- Cloudinary (upload signé : le secret reste dans le Worker) ---------- */

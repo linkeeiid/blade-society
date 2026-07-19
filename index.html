@@ -271,6 +271,13 @@
   .inputs{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:0;border-left:var(--bw) solid var(--line);border-top:var(--bw) solid var(--line);margin-bottom:16px}
   .inputs input{background:var(--panel2);border:none;border-right:var(--bw) solid var(--line);border-bottom:var(--bw) solid var(--line);color:var(--ink);padding:16px;font-family:'Space Mono',monospace;font-size:13px;outline:none}
   .err{font-family:'Space Mono',monospace;font-size:12px;color:#e0846f;margin-bottom:14px}
+  /* ---- vérification du numéro par SMS ---- */
+  .otp-help{font-family:'Space Mono',monospace;font-size:12.5px;color:var(--faint);line-height:1.7;margin:-8px 0 18px}
+  .otp-help b{color:var(--ink)}
+  .inputs input.otp-input{text-align:center;font-size:26px;letter-spacing:0.5em;text-indent:0.5em;padding:20px 16px}
+  .otp-links{display:flex;flex-wrap:wrap;gap:18px;justify-content:center;margin-top:16px}
+  .lnk{background:none;border:none;padding:0;color:var(--faint);font-family:'Space Mono',monospace;font-size:12px;text-decoration:underline;text-underline-offset:3px;cursor:pointer}
+  .lnk:hover{color:var(--ink)}
   .submit{width:100%;background:var(--chrome);color:#0d0d0d;border:none;border-radius:var(--radius);padding:18px;font-family:'Space Mono',monospace;font-size:12px;letter-spacing:0.12em;text-transform:uppercase;font-weight:700;cursor:pointer;transition:transform .3s,box-shadow .3s}
   .submit:hover{transform:translateY(-2px);box-shadow:0 14px 30px rgba(0,0,0,0.5)}
   .confirmed{text-align:center;padding:clamp(20px,4vw,46px) 0}
@@ -986,6 +993,7 @@ const App = {
     selectedDate:'', selectedSlot:null, selectedService:null,
     viewY:0, viewM:0,
     name:'', phone:'', email:'', error:'', submitting:false,
+    otpStep:false, otpCode:'', otpError:'', otpTel:'', otpSentAt:0,
     bookings:{}, confirmed:null, myBookings:[], manage:null, reschedule:null,
     barberOpen:false, barberPw:'', barberAuthed:false, barberError:'', barberDay:'', pushOn:false,
     barberCalY:0, barberCalM:0,
@@ -1099,17 +1107,17 @@ const App = {
   // SMS de CONFIRMATION au client (via le Worker -> Brevo, payant). Texte SANS accents (GSM-7, coût maîtrisé).
   // Envoyé UNIQUEMENT à la réservation : modif/annulation se font via l'email (pas de SMS = pas de surcoût).
   async smsClient(b){
-    if (!CFG.PUSH_ENDPOINT || !b.phone) return;
+    if (!CFG.PUSH_ENDPOINT || !(b.tel || b.phone)) return;
+    // texte court, sans accents : tient en UN seul SMS facturé (les détails d'accès sont dans l'email)
     const content =
       'Blade Society\n' +
       'RDV confirme le ' + this.smsDate(b.date) + ' a ' + frTime(b.time) + '.\n' +
-      'Acces (10min avant): feu rouge/portillon gris, interphone "Blade Society", batiment A, ascenseur 3e etage, porte marron, 2e bureau a droite.\n' +
-      'Pour modifier ou annuler: uniquement via le lien de votre email.\n' +
+      'Acces au salon, modification et annulation : tout est dans votre email de confirmation.\n' +
       'A bientot !';
     try {
       await fetch(CFG.PUSH_ENDPOINT.replace(/\/$/, '') + '/sms', {
         method:'POST', headers:{'Content-Type':'application/json'},
-        body: JSON.stringify({ to_phone: b.phone, content }),
+        body: JSON.stringify({ to_phone: b.tel || b.phone, content }),
       });
     } catch(e){}
   },
@@ -1143,7 +1151,90 @@ const App = {
     let rlt = []; try { rlt = JSON.parse(localStorage.getItem('bs_bk_times') || '[]'); } catch(e){}
     rlt = rlt.filter(t => now - t < RL_WINDOW_MIN * 60000);
     if (rlt.length >= RL_MAX){ this.set({ error:'Trop de réservations depuis cet appareil. Réessayez dans un moment.' }); return; }
-    this.set({ submitting:true, error:'' });
+    // le numéro doit être vérifié par SMS (une seule fois par numéro)
+    if (!this.isPhoneVerified(tel)){ await this.sendOtp(tel); return; }
+    await this.doBook(svc, name, phone, tel, email, rlt, now);
+  },
+
+  /* ---------------- vérification du numéro par SMS ----------------
+     Un code n'est demandé qu'à la première réservation d'un numéro.
+     Si le service SMS est indisponible, on laisse passer la réservation :
+     mieux vaut un RDV non vérifié qu'un salon qui ne peut plus rien encaisser. */
+  isPhoneVerified(tel){
+    try { return localStorage.getItem('bs_verif_' + tel) === '1'; } catch(e){ return false; }
+  },
+  markPhoneVerified(tel){
+    try { localStorage.setItem('bs_verif_' + tel, '1'); } catch(e){}
+  },
+  async sendOtp(tel){
+    if (!CFG.PUSH_ENDPOINT){ return this.otpBypass(tel); }
+    this.set({ submitting:true, error:'', otpError:'' });
+    let r = null, data = {};
+    try {
+      r = await fetch(CFG.PUSH_ENDPOINT.replace(/\/$/, '') + '/otp/send', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ phone: tel }),
+      });
+      data = await r.json();
+    } catch(e){ return this.otpBypass(tel); }
+    if (data && data.skip){ this.markPhoneVerified(tel); return this.otpBypass(tel); }
+    if (r.status === 429){
+      const wait = data && data.retry_in ? ' Réessayez dans ' + data.retry_in + ' s.' : '';
+      this.set({ submitting:false, error:'Trop de demandes de code pour ce numéro.' + wait });
+      return;
+    }
+    if (!r.ok || !data.sent) return this.otpBypass(tel);   // service SMS indisponible -> on n'bloque pas
+    this.set({ submitting:false, otpStep:true, otpTel:tel, otpCode:'', otpError:'', otpSentAt:Date.now() });
+  },
+  // le SMS n'a pas pu partir (service non configuré / panne) : on réserve quand même
+  async otpBypass(tel){
+    const s = this.state;
+    const svc = SERVICES.find(x => x.no === s.selectedService);
+    if (!svc){ this.set({ submitting:false }); return; }
+    const now = Date.now();
+    let rlt = []; try { rlt = JSON.parse(localStorage.getItem('bs_bk_times') || '[]'); } catch(e){}
+    rlt = rlt.filter(t => now - t < RL_WINDOW_MIN * 60000);
+    await this.doBook(svc, s.name.trim(), s.phone.trim(), tel, s.email.trim(), rlt, now);
+  },
+  async verifyOtp(){
+    const s = this.state;
+    const code = String(s.otpCode || '').replace(/\D/g, '');
+    if (code.length !== 6){ this.set({ otpError:'Entrez les 6 chiffres reçus par SMS.' }); return; }
+    this.set({ submitting:true, otpError:'' });
+    let r = null, data = {};
+    try {
+      r = await fetch(CFG.PUSH_ENDPOINT.replace(/\/$/, '') + '/otp/verify', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ phone: s.otpTel, code }),
+      });
+      data = await r.json();
+    } catch(e){ this.set({ submitting:false, otpError:'Connexion impossible. Réessayez.' }); return; }
+    if (!r.ok || !data.ok){
+      const msg = (data && data.error === 'expired')        ? 'Ce code a expiré. Demandez-en un nouveau.'
+                : (data && data.error === 'too_many_tries') ? 'Trop d’essais. Demandez un nouveau code.'
+                : (data && typeof data.tries_left === 'number') ? 'Code incorrect — il vous reste ' + data.tries_left + ' essai(s).'
+                : 'Code incorrect.';
+      this.set({ submitting:false, otpError:msg });
+      return;
+    }
+    this.markPhoneVerified(s.otpTel);
+    this.set({ otpStep:false, otpCode:'', otpError:'' });
+    await this.otpBypass(s.otpTel);   // le numéro est vérifié : on enregistre le RDV
+  },
+  // renvoi d'un code (le Worker impose lui-même un délai entre 2 envois)
+  async resendOtp(){
+    const s = this.state;
+    if (s.otpSentAt && Date.now() - s.otpSentAt < 60000){
+      const left = Math.ceil((60000 - (Date.now() - s.otpSentAt)) / 1000);
+      this.set({ otpError:'Patientez encore ' + left + ' s avant de redemander un code.' });
+      return;
+    }
+    this.set({ otpStep:false });
+    await this.sendOtp(s.otpTel);
+  },
+
+  async doBook(svc, name, phone, tel, email, rlt, now){
+    this.set({ submitting:true, error:'', otpStep:false });
     const key = this.state.selectedDate + '_' + this.state.selectedSlot;
     const fresh = await this.fetchStore();
     if (fresh[key]){
@@ -1859,15 +1950,33 @@ const App = {
     const svc = SERVICES.find(x => x.no === s.selectedService);
 
     let coordHtml = '';
-    if (s.selectedSlot){
+    if (s.otpStep){
+      /* --- vérification du numéro : saisie du code reçu par SMS --- */
+      const summary = [selectedDateLabel, frTime(s.selectedSlot), svc ? svc.name : null].filter(Boolean).join(' · ');
+      coordHtml = `<div class="coord">
+        <div class="res-lab">// Vérification de votre numéro</div>
+        <div class="coord-sum">${esc(summary)}</div>
+        <p class="otp-help">Nous venons d'envoyer un code à 6 chiffres au <b>${esc(s.phone)}</b>.<br>Saisissez-le pour confirmer votre rendez-vous.</p>
+        <div class="inputs">
+          <input class="otp-input" data-act="otpCode" value="${esc(s.otpCode)}" placeholder="• • • • • •"
+                 inputmode="numeric" autocomplete="one-time-code" maxlength="6">
+        </div>
+        ${s.otpError?`<div class="err">! ${esc(s.otpError)}</div>`:''}
+        <button class="submit" data-act="verifyOtp">${s.submitting?'Vérification…':'Valider le code'}</button>
+        <div class="otp-links">
+          <button class="lnk" data-act="resendOtp">Je n'ai rien reçu</button>
+          <button class="lnk" data-act="otpCancel">Changer de numéro</button>
+        </div>
+      </div>`;
+    } else if (s.selectedSlot){
       const summary = [selectedDateLabel, frTime(s.selectedSlot), svc ? svc.name : null].filter(Boolean).join(' · ');
       coordHtml = `<div class="coord">
         <div class="res-lab">// Vos coordonnées</div>
         <div class="coord-sum">${esc(summary)}</div>
         <div class="inputs">
-          <input data-act="name" value="${esc(s.name)}" placeholder="NOM & PRÉNOM">
-          <input data-act="phone" value="${esc(s.phone)}" placeholder="TÉLÉPHONE" inputmode="tel">
-          <input data-act="email" value="${esc(s.email)}" placeholder="ADRESSE EMAIL" inputmode="email">
+          <input data-act="name" value="${esc(s.name)}" placeholder="NOM & PRÉNOM" autocomplete="name">
+          <input data-act="phone" value="${esc(s.phone)}" placeholder="TÉLÉPHONE" inputmode="tel" autocomplete="tel">
+          <input data-act="email" value="${esc(s.email)}" placeholder="ADRESSE EMAIL" inputmode="email" autocomplete="email">
         </div>
         ${s.error?`<div class="err">! ${esc(s.error)}</div>`:''}
         <button class="submit" data-act="confirm">${s.submitting?'Confirmation…':'Confirmer la réservation'}</button>
@@ -2066,6 +2175,9 @@ function onResClick(e){
   else if (act === 'slot')    App.set({ selectedSlot:t.dataset.time, error:'' });
   else if (act === 'service') App.set({ selectedService:t.dataset.no, error:'' });
   else if (act === 'confirm') App.confirm();
+  else if (act === 'verifyOtp') App.verifyOtp();
+  else if (act === 'resendOtp') App.resendOtp();
+  else if (act === 'otpCancel') App.set({ otpStep:false, otpCode:'', otpError:'', error:'', submitting:false });
   else if (act === 'reset')   App.reset();
   else if (act === 'ics')     App.addToCalendar();
   else if (act === 'cancelmine') App.cancelMine(t.dataset.key);
@@ -2122,6 +2234,7 @@ function onResInput(e){
   else if (act === 'bkName')   App.state.bkName = t.value;
   else if (act === 'bkPhone')  App.state.bkPhone = t.value;
   else if (act === 'bkCustom') App.state.bkCustom = t.value;
+  else if (act === 'otpCode')  App.state.otpCode = t.value.replace(/\D/g, '').slice(0, 6);
   else if (act === 'periodFrom') App.state.periodFrom = t.value;
   else if (act === 'periodTo')   App.state.periodTo = t.value;
   else if (act === 'schedstart'){ const sc = App.state.scheduleEdit; if (sc) sc[+t.dataset.wd].ranges[+t.dataset.ri][0] = t.value; }
@@ -2135,6 +2248,8 @@ function onResInput(e){
 function onResKeydown(e){
   const t = e.target.closest('[data-act="barberPw"]');
   if (t && e.key === 'Enter') App.barberSubmit();
+  const o = e.target.closest('[data-act="otpCode"]');
+  if (o && e.key === 'Enter') App.verifyOtp();
 }
 function onResChange(e){
   const pf = e.target.closest('[data-act="photofile"]');
