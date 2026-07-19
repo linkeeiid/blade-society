@@ -1634,10 +1634,10 @@ const App = {
       return;
     }
     await this.delStore(r.oldKey);                 // libère l'ancien créneau
-    this.removeContact(r.oldKey);
-    // coordonnées reportées, puis rappel immédiat si le nouveau créneau est à moins de 24h
-    Promise.resolve(this.saveContact({ key:newKey, phone:r.phone, name:r.name, email:r.email }))
-      .then(() => this.remindIfSoon({ key:newKey }));
+    // coordonnées reportées sur le nouveau créneau, EN SÉQUENCE (jamais en parallèle)
+    await this.moveContact(r.oldKey, newKey);
+    if (r.phone) await this.saveContact({ key:newKey, phone:r.phone, name:r.name, email:r.email });
+    this.remindIfSoon({ key:newKey });             // rappel si le nouveau créneau est à moins de 24h
     const bookings = await this.fetchStore();
     const newDate = this.state.selectedDate, newTime = this.state.selectedSlot;
     const ctx = { name:r.name, email:r.email, phone:r.phone, service:r.service, price:r.price,
@@ -1709,6 +1709,13 @@ const App = {
     if (!CFG.PUSH_ENDPOINT || !b.key || !b.phone) return;
     try { await fetch(this.cmsUrl('/contact'), { method:'POST', headers:{'Content-Type':'application/json'},
       body: JSON.stringify({ key:b.key, phone:b.phone, name:b.name || '', email:b.email || '' }) }); } catch(e){}
+  },
+  // déplace le contact d'un créneau à l'autre en une seule opération côté serveur
+  // (un remove + un save lancés en parallèle s'écrasaient : le tél du client était perdu)
+  async moveContact(from, to){
+    if (!CFG.PUSH_ENDPOINT || !from || !to) return;
+    try { await fetch(this.cmsUrl('/contact/move'), { method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ from, to }) }); } catch(e){}
   },
   removeContact(key){
     if (!CFG.PUSH_ENDPOINT || !key) return;
@@ -1990,11 +1997,7 @@ const App = {
       return;
     }
     await this.delStore(oldKey);                            // libère l'ancienne heure
-    const c = (this.state.contacts || {})[oldKey];
-    if (c){
-      this.saveContact({ key:newKey, name:c.name || sl.name || '', phone:c.phone || '', email:c.email || '' });
-      this.removeContact(oldKey);
-    }
+    await this.moveContact(oldKey, newKey);                 // le tél du client suit le créneau
     const bookings = await this.fetchStore();
     await this.loadContacts();
     // on suit le rendez-vous s'il a changé de jour, sinon Giovany le croirait disparu

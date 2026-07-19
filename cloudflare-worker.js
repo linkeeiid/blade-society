@@ -38,6 +38,7 @@ const OTP_COOLDOWN_S      = 60;             // délai mini entre 2 envois au mê
 const OTP_MAX_PER_PHONE   = 3;              // codes max par numéro / heure
 const OTP_MAX_PER_IP      = 8;              // codes max par appareil (IP) / heure
 const OTP_MAX_PROBES_PER_IP = 30;           // requêtes max par appareil / heure (numéros déjà vérifiés inclus)
+const REMIND_MAX_PER_IP   = 5;              // rappels immédiats max par appareil / heure
 const OTP_VERIFIED_TTL_S  = 180 * 24 * 3600; // un numéro vérifié le reste 180 jours
 
 export default {
@@ -118,6 +119,19 @@ export default {
         await env.SUBS.put('contacts', JSON.stringify(map));
         return reply({ ok: true }, 200, cors);
       }
+      /* Déplace un contact d'un créneau à l'autre en UNE SEULE lecture-écriture.
+         Indispensable : un /contact + un /contact/remove lancés en parallèle lisent
+         la même version de la liste et le dernier à écrire efface le travail de l'autre
+         — le numéro du client était perdu à chaque déplacement de rendez-vous. */
+      if (url.pathname === '/contact/move' && req.method === 'POST') {
+        const b = await req.json();
+        if (!b || !b.from || !b.to) return reply({ error: 'bad' }, 400, cors);
+        const raw = await env.SUBS.get('contacts');
+        const map = raw ? JSON.parse(raw) : {};
+        const c = map[b.from];
+        if (c) { map[b.to] = c; delete map[b.from]; await env.SUBS.put('contacts', JSON.stringify(map)); }
+        return reply({ ok: true, moved: !!c }, 200, cors);
+      }
       if (url.pathname === '/contact/remove' && req.method === 'POST') { // supprime (à l'annulation)
         const b = await req.json();
         if (!b || !b.key) return reply({ error: 'bad' }, 400, cors);
@@ -168,6 +182,16 @@ export default {
         const key = String((b && b.key) || '');
         if (!/^\d{4}-\d{2}-\d{2}_\d{2}:\d{2}$/.test(key)) return reply({ error: 'bad_key' }, 400, cors);
         if (!env.SMS_SENDER || !env.FIREBASE_DB_URL) return reply({ ok: true, skipped: 'sms_off' }, 200, cors);
+        // plafond par appareil : les clés de rendez-vous sont publiques (Firebase en lecture)
+        // et /contact n'est pas authentifiée — sans ce garde-fou, on pourrait déclencher
+        // un SMS par réservation existante aux frais de Giovany.
+        // Un client légitime n'appelle cette route qu'une fois. En cas de blocage, le Cron prend le relais.
+        {
+          const ip = req.headers.get('CF-Connecting-IP') || 'unknown';
+          const n = parseInt((await env.SUBS.get('rn:' + ip)) || '0', 10);
+          if (n >= REMIND_MAX_PER_IP) return reply({ ok: true, skipped: 'rate_limited' }, 200, cors);
+          await env.SUBS.put('rn:' + ip, String(n + 1), { expirationTtl: 3600 });
+        }
         const reminded24 = JSON.parse((await env.SUBS.get('reminded24')) || '{}');
         if (reminded24[key]) return reply({ ok: true, skipped: 'already_sent' }, 200, cors);
         let slot = null;                                   // le rendez-vous doit exister pour de vrai
