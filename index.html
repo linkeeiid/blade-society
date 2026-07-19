@@ -110,6 +110,15 @@
   .navlinks a.cta:hover{background:var(--ink);color:#0d0d0d}
   .navlinks a.navbarber{padding:0 16px}
   @media(max-width:560px){.navlinks a.navbarber{padding:0 11px;font-size:10px}}
+  /* onglet « Mes RDV » : texte sur grand écran, pictogramme seul sur mobile (la place est comptée) */
+  #navMyRdv{white-space:nowrap;padding:0 16px}
+  #navMyRdv .nav-ico{display:none;font-size:15px;line-height:1}
+  @media(max-width:780px){
+    #navMyRdv{padding:0 12px}
+    #navMyRdv .nav-lbl{display:none}
+    #navMyRdv .nav-ico{display:inline}
+    .nav-badge{margin-left:5px}
+  }
 
   /* ============================ MODIFICATIONS (overlay barber) ============================ */
   .modifs{position:fixed;inset:0;z-index:250;background:var(--bg);overflow-y:auto;display:none}
@@ -297,6 +306,55 @@
   .manage .mng-cancel{border-color:#c75d5d;color:#c75d5d}
   .manage .mng-cancel:hover{background:#c75d5d;color:#fff}
 
+  /* CONFIRMATION : date + heure bien visibles */
+  .conf-when{display:flex;flex-direction:column;align-items:center;gap:4px;border:var(--bw) solid var(--line);
+    border-radius:var(--radius);padding:18px 14px;margin:0 0 16px;font-family:'Space Mono',monospace}
+  .conf-when .cw-d{font-size:clamp(14px,3.4vw,18px);font-weight:700;color:var(--ink);text-transform:uppercase;letter-spacing:0.04em}
+  .conf-when .cw-t{font-size:clamp(34px,9vw,52px);font-weight:700;color:var(--chrome);line-height:1.05}
+
+  /* PANNEAU LATÉRAL « MES RENDEZ-VOUS » (glisse depuis la droite) */
+  .nav-badge{display:none;align-items:center;justify-content:center;min-width:17px;height:17px;padding:0 4px;
+    margin-left:7px;border-radius:9px;background:#d64545;color:#fff;font-family:'Space Mono',monospace;
+    font-size:10px;font-weight:700;line-height:1}
+  .drawer-back{position:fixed;inset:0;z-index:9600;background:rgba(6,6,7,0.66);backdrop-filter:blur(3px);
+    -webkit-backdrop-filter:blur(3px);opacity:0;visibility:hidden;pointer-events:none;transition:opacity .45s ease,visibility .45s ease}
+  .drawer-back.open{opacity:1;visibility:visible;pointer-events:auto}
+  .drawer{position:fixed;top:0;right:0;height:100%;width:min(460px,92vw);z-index:9700;background:var(--bg);
+    border-left:var(--bw) solid var(--line);box-shadow:-50px 0 90px rgba(0,0,0,0.55);
+    transform:translateX(100%);transition:transform .55s cubic-bezier(.16,1,.3,1);
+    display:flex;flex-direction:column;overflow:hidden}
+  .drawer.open{transform:translateX(0)}
+  .drawer-bar{display:flex;align-items:center;justify-content:space-between;gap:14px;flex:0 0 auto;
+    padding:20px clamp(18px,4vw,28px);border-bottom:var(--bw) solid var(--line)}
+  .drawer-title{font-family:var(--display);font-size:24px;text-transform:uppercase}
+  .drawer-close{background:none;border:var(--bw) solid var(--line);border-radius:var(--radius);color:var(--ink);
+    width:38px;height:38px;font-size:15px;cursor:pointer;transition:all .25s}
+  .drawer-close:hover{background:var(--ink);color:#0d0d0d}
+  .drawer-body{flex:1 1 auto;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:clamp(18px,4vw,28px)}
+  .myr-sec{font-family:'Space Mono',monospace;font-size:11px;letter-spacing:0.14em;text-transform:uppercase;
+    color:var(--faint);margin:26px 0 12px}
+  .myr-sec:first-child{margin-top:0}
+  .myr-row{border:var(--bw) solid var(--line);border-radius:var(--radius);padding:15px 16px;margin-bottom:10px}
+  .myr-row.past{opacity:.62;border-style:dashed}
+  .myr-when{font-family:'Space Mono',monospace;font-size:13.5px;color:var(--ink)}
+  .myr-when b{font-size:16px;color:var(--chrome)}
+  .myr-row.past .myr-when b{color:var(--mut)}
+  .myr-sv{font-family:'Space Mono',monospace;font-size:11.5px;color:var(--faint);margin-top:4px}
+  .myr-acts{display:flex;gap:8px;margin-top:13px}
+  .myr-acts button{flex:1;background:none;border:var(--bw) solid var(--line);border-radius:var(--radius);
+    color:var(--ink);padding:10px 8px;font-family:'Space Mono',monospace;font-size:10.5px;letter-spacing:0.08em;
+    text-transform:uppercase;cursor:pointer;transition:all .25s}
+  .myr-acts .myr-move:hover{background:var(--ink);color:#0d0d0d}
+  .myr-acts .myr-cancel{border-color:#c75d5d;color:#c75d5d}
+  .myr-acts .myr-cancel:hover{background:#c75d5d;color:#fff}
+  .myr-empty{font-family:'Space Mono',monospace;font-size:12px;color:var(--faint);line-height:1.9;
+    border:var(--bw) dashed var(--line);border-radius:var(--radius);padding:18px 16px;text-align:center}
+  .myb-open{display:flex;align-items:center;justify-content:center;width:100%;margin-top:22px;
+    background:none;border:var(--bw) solid var(--line);border-radius:var(--radius);color:var(--ink);
+    padding:15px;font-family:'Space Mono',monospace;font-size:11px;letter-spacing:0.12em;
+    text-transform:uppercase;cursor:pointer;transition:all .25s}
+  .myb-open:hover{background:var(--ink);color:#0d0d0d}
+
   /* ESPACE BARBER */
   .barber-toggle{background:none;border:none;color:var(--faint);font-family:'Space Mono',monospace;font-size:11px;letter-spacing:0.12em;text-transform:uppercase;cursor:pointer;transition:color .3s}
   .barber-toggle:hover{color:var(--ink)}
@@ -390,6 +448,15 @@
   .aslot button{background:none;border:var(--bw) solid var(--line);color:var(--mut);padding:7px 12px;font-family:'Space Mono',monospace;font-size:10px;letter-spacing:0.08em;text-transform:uppercase;cursor:pointer;transition:all .25s;white-space:nowrap}
   .aslot button:hover{border-color:var(--ink);color:var(--ink)}
   .aslot:not(.is-free):not(.is-blocked) button:hover{border-color:#e0846f;color:#e0846f}
+  /* changer l'heure d'un RDV existant */
+  .aslot-acts{display:flex;gap:6px;justify-content:flex-end}
+  .aslot .a-edit{padding:7px 9px;font-size:12px;line-height:1}
+  .aslot:not(.is-free):not(.is-blocked) .a-edit:hover{border-color:var(--ink);color:var(--ink)}
+  .aslot-edit{border-bottom:var(--bw) solid var(--line);padding:14px 4px 18px;background:var(--panel2)}
+  .aslot-edit .ae-lab{font-family:'Space Mono',monospace;font-size:11px;color:var(--faint);margin-bottom:8px}
+  .aslot-edit .ae-acts{display:flex;gap:8px;margin-top:10px}
+  .aslot-edit .ae-acts .submit{padding:13px;font-size:11px}
+  .aslot-edit .ae-acts .ghost{padding:13px 18px;white-space:nowrap}
   .blegend{display:flex;flex-wrap:wrap;gap:10px 16px;margin-top:18px;padding-top:16px;border-top:var(--bw) solid var(--line);font-family:'Space Mono',monospace;font-size:10.5px;color:var(--mut)}
   .blegend span{display:flex;align-items:center;gap:7px}
   .blegend i{width:11px;height:11px;border-radius:2px;display:inline-block}
@@ -472,6 +539,7 @@
     <a class="hide-sm" href="#apropos">À propos</a>
     <a class="hide-sm" href="#services">Services</a>
     <a class="hide-sm" href="#galerie">Galerie</a>
+    <a id="navMyRdv" href="#" style="display:none" aria-label="Mes rendez-vous"><span class="nav-ico" aria-hidden="true">🗓</span><span class="nav-lbl">Mes RDV</span><span class="nav-badge" id="myRdvBadge">0</span></a>
     <a id="navPlanning" class="navbarber" href="#reserver" style="display:none">Planning</a>
     <a id="navModifs" class="navbarber" href="#" style="display:none">Modifications</a>
     <a class="cta" href="#reserver">Réserver →</a>
@@ -638,6 +706,16 @@
   </div>
   <div class="modifs-body" id="modifsContent"></div>
 </div>
+
+<!-- ============================ MES RENDEZ-VOUS (client) ============================ -->
+<div id="myrdvBack" class="drawer-back"></div>
+<aside id="myrdv" class="drawer" aria-label="Mes rendez-vous">
+  <div class="drawer-bar">
+    <span class="drawer-title">Mes rendez-vous</span>
+    <button class="drawer-close" data-act="closemyrdv" aria-label="Fermer">✕</button>
+  </div>
+  <div class="drawer-body" id="myrdvContent"></div>
+</aside>
 
 <!-- ============================ VISIONNEUSE ============================ -->
 <div class="lb" id="lightbox" role="dialog" aria-modal="true" aria-label="Visionneuse photo">
@@ -994,7 +1072,8 @@ const App = {
     viewY:0, viewM:0,
     name:'', phone:'', email:'', error:'', submitting:false,
     otpStep:false, otpCode:'', otpError:'', otpTel:'', otpSentAt:0,
-    bookings:{}, confirmed:null, myBookings:[], manage:null, reschedule:null,
+    bookings:{}, confirmed:null, myBookings:[], manage:null, reschedule:null, myRdvOpen:false,
+    editKey:null, editTime:'',
     barberOpen:false, barberPw:'', barberAuthed:false, barberError:'', barberDay:'', pushOn:false,
     barberCalY:0, barberCalM:0,
     adminPwInput:'', cmsUploading:false, cmsError:'', textEdit:null, textSaved:false, modifsOpen:false, planningOpen:false,
@@ -1039,7 +1118,33 @@ const App = {
     }
     const all = this.local(); delete all[key]; localStorage.setItem(LS_KEY, JSON.stringify(all));
   },
-  async refresh(){ const bookings = await this.fetchStore(); this.set({ bookings }); if (this.state.barberAuthed) this.loadContacts(); },
+  async refresh(){
+    const bookings = await this.fetchStore();
+    this.reconcileMine(bookings);
+    this.set({ bookings });
+    if (this.state.barberAuthed) this.loadContacts();
+  },
+  /* Giovany peut déplacer un RDV : sa clé change, mais pas son jeton.
+     On resynchronise les RDV mémorisés sur cet appareil pour que « Mes rendez-vous »
+     affiche la nouvelle heure au lieu de croire le rendez-vous annulé. */
+  reconcileMine(bookings){
+    const mine = this.state.myBookings || [];
+    const byTok = {};
+    for (const k in bookings){ const b = bookings[k]; if (b && b.tok) byTok[b.tok] = k; }
+    let changed = false;
+    const next = mine.map(b => {
+      if (!b.tok || bookings[b.key]) return b;
+      const k = byTok[b.tok];
+      if (!k || k === b.key) return b;
+      changed = true;
+      const us = k.indexOf('_');
+      return Object.assign({}, b, { key:k, date:k.slice(0, us), time:k.slice(us + 1) });
+    });
+    if (changed){
+      this.state.myBookings = next;
+      try { localStorage.setItem('bs_my_bookings', JSON.stringify(next)); } catch(e){}
+    }
+  },
 
   /* ---------------- notifications ---------------- */
   prettyDate(iso){
@@ -1264,10 +1369,14 @@ const App = {
     this.smsClient(full);     // SMS de confirmation au client (en arrière-plan)
     this.saveContact(full);   // tél du client (privé, lisible seulement par le barber)
     try { rlt.push(now); localStorage.setItem('bs_bk_times', JSON.stringify(rlt)); } catch(e){}
-    const mine = (this.state.myBookings || []).concat([{ key, service: full.service, date: full.date, time: full.time }]);
+    // on garde aussi ses coordonnées : elles servent à l'espace « Mes rendez-vous »
+    // (annuler / déplacer et envoyer l'email correspondant, sans re-saisie)
+    const mine = (this.state.myBookings || []).concat([{ key, service: full.service, price: svc.price,
+      serviceNo: svc.no, name, email, phone, tok, date: full.date, time: full.time }]);
     try { localStorage.setItem('bs_my_bookings', JSON.stringify(mine)); } catch(e){}
     const bookings = Object.assign({}, fresh, { [key]: slot });
     this.set({ bookings, myBookings: mine, confirmed:full, submitting:false, selectedSlot:null, selectedService:null, name:'', phone:'', email:'' });
+    this.scrollToRes();   // on ramène le client sur sa confirmation (sinon la page raccourcit et il se retrouve en bas)
   },
   reset(){ this.set({ confirmed:null, selectedSlot:null, error:'' }); },
   // le client ajoute son RDV à l'agenda de son téléphone (.ics)
@@ -1298,9 +1407,16 @@ const App = {
   },
   // le client annule lui-même un de ses rendez-vous (pris sur cet appareil)
   async cancelMine(key){
+    const b = (this.state.myBookings || []).find(x => x.key === key);
     await this.delStore(key);
     this.removeContact(key);
-    const mine = (this.state.myBookings || []).filter(b => b.key !== key);
+    if (b && b.email){                       // même email d'annulation que depuis le lien de l'email
+      const ctx = { name:b.name || '', email:b.email, phone:b.phone || '', service:b.service || '',
+        price:b.price || '', date:b.date, time:b.time, cancelled:true };
+      this.emailClient(ctx);
+      this.pushBarber(ctx);                  // Giovany est prévenu de l'annulation
+    }
+    const mine = (this.state.myBookings || []).filter(x => x.key !== key);
     try { localStorage.setItem('bs_my_bookings', JSON.stringify(mine)); } catch(e){}
     const bookings = await this.fetchStore();
     this.set({ myBookings: mine, bookings });
@@ -1309,6 +1425,12 @@ const App = {
   async openManage(key, tok, email, phone){
     try { history.replaceState(null, '', location.href.split('#')[0].split('?')[0]); } catch(e){}
     const bookings = await this.fetchStore();
+    // si Giovany a déplacé le rendez-vous, la clé du lien n'existe plus :
+    // on retrouve le bon créneau grâce au jeton, qui lui ne change pas
+    if (!bookings[key] && tok){
+      const moved = Object.keys(bookings).find(k => bookings[k] && bookings[k].tok === tok);
+      if (moved) key = moved;
+    }
     const slot = bookings[key];
     if (!slot || slot.blocked){ this.set({ bookings, manage:{ key, missing:true } }); this.scrollToRes(); return; }
     if (slot.tok && tok && slot.tok !== tok){ this.set({ bookings, manage:{ key, invalid:true } }); this.scrollToRes(); return; }
@@ -1317,7 +1439,60 @@ const App = {
     this.set({ bookings, manage:{ key, tok, slot, date, time, email: email || '', phone: phone || '' } });
     this.scrollToRes();
   },
-  scrollToRes(){ try { document.getElementById('reserver').scrollIntoView({ behavior:'smooth', block:'start' }); } catch(e){} },
+  // ramène sur la zone réservation (2 passes : la hauteur de la page change au re-rendu)
+  scrollToRes(){
+    const go = () => { try { document.getElementById('reserver').scrollIntoView({ behavior:'smooth', block:'start' }); } catch(e){} };
+    requestAnimationFrame(() => { go(); setTimeout(go, 140); });
+  },
+
+  /* ---------------- espace « Mes rendez-vous » (panneau latéral) ---------------- */
+  // RDV encore à venir (et toujours actifs côté salon)
+  myUpcoming(){
+    const iso = parisTodayIso(), nowMin = parisNowMin();
+    return (this.state.myBookings || [])
+      .filter(b => this.state.bookings[b.key] && (b.date > iso || (b.date === iso && timeToMin(b.time) >= nowMin)))
+      .sort((a, z) => (a.date + a.time) < (z.date + z.time) ? -1 : 1);
+  },
+  // historique : on se fie au seul appareil du client (le créneau peut avoir été purgé côté salon)
+  myPast(){
+    const iso = parisTodayIso(), nowMin = parisNowMin();
+    return (this.state.myBookings || [])
+      .filter(b => b.date < iso || (b.date === iso && timeToMin(b.time) < nowMin))
+      .sort((a, z) => (a.date + a.time) > (z.date + z.time) ? -1 : 1);   // le plus récent en premier
+  },
+  openMyRdv(){ document.body.style.overflow = 'hidden'; this.set({ myRdvOpen:true }); },
+  closeMyRdv(){ document.body.style.overflow = ''; this.set({ myRdvOpen:false }); },
+  // déplacer un RDV depuis le panneau : réutilise le mode « déplacement » déjà en place
+  moveMine(key){
+    const b = (this.state.myBookings || []).find(x => x.key === key); if (!b) return;
+    const r = { oldKey:b.key, oldDate:b.date, oldTime:b.time, tok:b.tok || '',
+      name:b.name || '', service:b.service || '', serviceNo:b.serviceNo || '', price:b.price || '',
+      email:b.email || '', phone:b.phone || '' };
+    const parts = b.date.split('-').map(Number);
+    this.closeMyRdv();
+    this.set({ reschedule:r, manage:null, confirmed:null, selectedDate:'', selectedSlot:null, error:'',
+      viewY:parts[0], viewM:parts[1] - 1 });
+    this.scrollToRes();
+  },
+  renderMyRdv(){
+    const up = this.myUpcoming(), past = this.myPast();
+    const row = (b, isPast) => `<div class="myr-row${isPast ? ' past' : ''}">
+      <div class="myr-when">${esc(this.labelOf(b.date))} · <b>${esc(frTime(b.time))}</b></div>
+      <div class="myr-sv">${esc(b.service || 'Rendez-vous')}${b.price ? ' · ' + esc(b.price) : ''}</div>
+      ${isPast ? '' : `<div class="myr-acts">
+        <button class="myr-move" data-act="movemine" data-key="${esc(b.key)}">Modifier</button>
+        <button class="myr-cancel" data-act="cancelmine" data-key="${esc(b.key)}">Annuler</button>
+      </div>`}
+    </div>`;
+    return `<div class="myr-sec">// En cours</div>
+      ${up.length
+        ? up.map(b => row(b, false)).join('')
+        : `<div class="myr-empty">Aucun rendez-vous à venir.<br><button class="lnk" data-act="myrdvbook">Réserver un créneau</button></div>`}
+      <div class="myr-sec">// Mes rendez-vous passés</div>
+      ${past.length
+        ? past.map(b => row(b, true)).join('')
+        : `<div class="myr-empty">Aucun rendez-vous passé pour le moment.</div>`}`;
+  },
   async cancelManaged(){
     const m = this.state.manage; if (!m || !m.key) return;
     await this.delStore(m.key);
@@ -1375,27 +1550,19 @@ const App = {
     this.emailClient(ctx);                          // email "rendez-vous modifié" au client
     this.pushBarber(ctx);                           // notif push au barber (déplacé)
     let mine = (this.state.myBookings || []).filter(b => b.key !== r.oldKey);
-    mine = mine.concat([{ key:newKey, service:r.service, date:newDate, time:newTime }]);
+    mine = mine.concat([{ key:newKey, service:r.service, price:r.price, serviceNo:r.serviceNo,
+      name:r.name, email:r.email, phone:r.phone, tok:newTok, date:newDate, time:newTime }]);
     try { localStorage.setItem('bs_my_bookings', JSON.stringify(mine)); } catch(e){}
     this.set({ bookings, myBookings:mine, reschedule:null, selectedSlot:null, submitting:false,
       manage:{ done:true, moved:true } });
+    this.scrollToRes();
   },
+  // sous la réservation : simple accès au panneau (le détail vit dans « Mes rendez-vous »)
   renderMyBookings(){
-    const today = isoOf(this.todayMidnight());
-    const list = (this.state.myBookings || [])
-      .filter(b => b.date >= today && this.state.bookings[b.key])   // à venir + encore actif
-      .sort((a, z) => (a.date + a.time) < (z.date + z.time) ? -1 : 1);
-    if (!list.length) return '';
-    return `<div class="myb">
-      <div class="res-lab">// Mes rendez-vous</div>
-      ${list.map(b => `<div class="myb-row">
-        <div style="min-width:0">
-          <div class="myb-d">${esc(this.labelOf(b.date))} · ${esc(frTime(b.time))}</div>
-          <div class="myb-s">${esc(b.service || '')}</div>
-        </div>
-        <button data-act="cancelmine" data-key="${esc(b.key)}">Annuler</button>
-      </div>`).join('')}
-    </div>`;
+    if (!(this.state.myBookings || []).length) return '';
+    const n = this.myUpcoming().length;
+    return `<button class="myb-open" data-act="openmyrdv">Mes rendez-vous${
+      n ? `<span class="nav-badge" style="display:inline-flex">${n}</span>` : ''}</button>`;
   },
 
   /* ---------------- barber ---------------- */
@@ -1421,6 +1588,15 @@ const App = {
     const disp = this.state.barberAuthed ? 'flex' : 'none';
     const p = document.getElementById('navPlanning'); if (p) p.style.display = disp;
     const m = document.getElementById('navModifs');   if (m) m.style.display = disp;
+    // « Mes RDV » : visible dès que le client a réservé au moins une fois sur cet appareil,
+    // avec une pastille rouge indiquant le nombre de rendez-vous en cours
+    const n = document.getElementById('navMyRdv');
+    if (n){
+      n.style.display = (this.state.myBookings || []).length ? 'inline-flex' : 'none';
+      const c = this.myUpcoming().length;
+      const badge = document.getElementById('myRdvBadge');
+      if (badge){ badge.textContent = String(c); badge.style.display = c ? 'inline-flex' : 'none'; }
+    }
   },
   /* ---------------- CMS : gestion des photos (Giovany) ---------------- */
   adminPw(){ try { return localStorage.getItem('bs_admin_pw') || ''; } catch(e){ return ''; } },
@@ -1692,6 +1868,41 @@ const App = {
     this.set({ bookings, submitting:false, barberPanel:null, barberDay:date,
       bkName:'', bkPhone:'', bkService:null, bkSlot:null, bkCustom:'', bkDate:'', barberError:'' });
   },
+  /* le barber change l'heure d'un RDV déjà pris, sans le ressaisir.
+     Pas d'email au client : Giovany ne déplace qu'après s'être mis d'accord avec lui.
+     Le jeton du RDV est donc CONSERVÉ pour que l'ancien lien reçu par email
+     continue de fonctionner malgré le changement de créneau (voir openManage). */
+  async barberMoveBooking(){
+    const s = this.state;
+    const oldKey = s.editKey; if (!oldKey) return;
+    const t = normTime(s.editTime);
+    if (!t){ this.set({ barberError:'Heure invalide — format 15:00.' }); return; }
+    const us = oldKey.indexOf('_');
+    const date = oldKey.slice(0, us), oldTime = oldKey.slice(us + 1);
+    const newKey = date + '_' + t;
+    if (newKey === oldKey){ this.set({ editKey:null, editTime:'', barberError:'' }); return; }
+    this.set({ submitting:true, barberError:'' });
+    if (!this.state.contacts) await this.loadContacts();   // pour reporter les coordonnées du client
+    const fresh = await this.fetchStore();
+    const sl = fresh[oldKey];
+    if (!sl){ this.set({ bookings:fresh, submitting:false, editKey:null, editTime:'', barberError:'Ce rendez-vous n’existe plus.' }); return; }
+    if (fresh[newKey]){ this.set({ bookings:fresh, submitting:false, barberError:'Ce créneau est déjà pris.' }); return; }
+    const ok = await this.putStore(newKey, Object.assign({}, sl, { ts:Date.now() }));   // même jeton
+    if (!ok){
+      const after = await this.fetchStore();
+      this.set({ bookings:after, submitting:false, barberError:'Déplacement impossible (créneau pris ?).' });
+      return;
+    }
+    await this.delStore(oldKey);                            // libère l'ancienne heure
+    const c = (this.state.contacts || {})[oldKey];
+    if (c){
+      this.saveContact({ key:newKey, name:c.name || sl.name || '', phone:c.phone || '', email:c.email || '' });
+      this.removeContact(oldKey);
+    }
+    const bookings = await this.fetchStore();
+    await this.loadContacts();
+    this.set({ bookings, submitting:false, editKey:null, editTime:'', barberError:'' });
+  },
   // le barber bloque une période complète (congés) : retire les créneaux libres des jours ouverts
   async barberBlockPeriod(){
     const from = this.state.periodFrom, to = this.state.periodTo;
@@ -1844,7 +2055,11 @@ const App = {
     if (s.confirmed){
       return `<div class="confirmed">
         <div class="big">C'est noté.</div>
-        <p class="l1">${esc((s.confirmed.service ? s.confirmed.service + ' · ' : '') + this.prettyDate(s.confirmed.date) + ' · ' + frTime(s.confirmed.time))}</p>
+        <div class="conf-when">
+          <span class="cw-d">${esc(this.prettyDate(s.confirmed.date))}</span>
+          <span class="cw-t">${esc(frTime(s.confirmed.time))}</span>
+        </div>
+        <p class="l1">${esc(s.confirmed.service || '')}</p>
         <p class="l2">Votre réservation a été validée. Vous allez recevoir une confirmation dans quelques instants…</p>
         <button class="btn-chrome" data-act="ics" style="margin-bottom:14px">＋ Ajouter à mon agenda</button>
         <button class="ghost" data-act="reset">Réserver un autre créneau</button>
@@ -2026,6 +2241,7 @@ const App = {
         if (sl){
           const col = SERVICE_COLORS[sl.serviceNo] || '#9a9ca2';
           const ph = (s.contacts && s.contacts[key]) ? (s.contacts[key].phone || '') : '';
+          const editing = s.editKey === key;
           return `<div class="aslot">
             <span class="t">${frTime(t)}</span><span class="bar" style="background:${col}"></span>
             <div class="info">
@@ -2033,8 +2249,18 @@ const App = {
               <div class="nm">${esc(sl.name || 'Client')}</div>
               ${ph ? `<a class="nm-tel" href="tel:${esc(ph)}">📞 ${esc(ph)}</a>` : ''}
             </div>
-            <button data-act="cancel" data-key="${esc(key)}">Libérer</button>
-          </div>`;
+            <div class="aslot-acts">
+              <button class="a-edit" data-act="edittime" data-key="${esc(key)}" title="Changer l'heure" aria-label="Changer l'heure">🕐</button>
+              <button data-act="cancel" data-key="${esc(key)}">Libérer</button>
+            </div>
+          </div>` + (editing ? `<div class="aslot-edit">
+            <div class="ae-lab">Nouvelle heure pour ${esc(sl.name || 'ce client')} — le client sera prévenu par email.</div>
+            <input class="bfield" type="time" step="300" data-act="editTime" value="${esc(s.editTime)}">
+            <div class="ae-acts">
+              <button class="submit" data-act="saveEditTime">${s.submitting ? 'Déplacement…' : 'Valider la nouvelle heure'}</button>
+              <button class="ghost" data-act="cancelEditTime">Annuler</button>
+            </div>
+          </div>` : '');
         }
         return `<div class="aslot is-free">
           <span class="t">${frTime(t)}</span><span class="bar"></span>
@@ -2162,6 +2388,14 @@ const App = {
       modifs.classList.toggle('open', this.state.modifsOpen);
       document.getElementById('modifsContent').innerHTML = this.state.modifsOpen ? this.renderModifs() : '';
     }
+    const myrdv = document.getElementById('myrdv');
+    if (myrdv){
+      myrdv.classList.toggle('open', this.state.myRdvOpen);
+      const back = document.getElementById('myrdvBack');
+      if (back) back.classList.toggle('open', this.state.myRdvOpen);
+      document.getElementById('myrdvContent').innerHTML = this.state.myRdvOpen ? this.renderMyRdv() : '';
+    }
+    this.refreshNav();   // met à jour l'onglet « Mes RDV » et sa pastille
   },
 };
 
@@ -2181,6 +2415,13 @@ function onResClick(e){
   else if (act === 'reset')   App.reset();
   else if (act === 'ics')     App.addToCalendar();
   else if (act === 'cancelmine') App.cancelMine(t.dataset.key);
+  else if (act === 'movemine')   App.moveMine(t.dataset.key);
+  else if (act === 'openmyrdv')  App.openMyRdv();
+  else if (act === 'closemyrdv') App.closeMyRdv();
+  else if (act === 'myrdvbook')  { App.closeMyRdv(); App.scrollToRes(); }
+  else if (act === 'edittime')   { const k = t.dataset.key; App.set({ editKey:k, editTime:k.slice(k.indexOf('_') + 1), barberError:'' }); }
+  else if (act === 'saveEditTime')   App.barberMoveBooking();
+  else if (act === 'cancelEditTime') App.set({ editKey:null, editTime:'', barberError:'' });
   else if (act === 'managecancel') App.cancelManaged();
   else if (act === 'managemove')   App.moveManaged();
   else if (act === 'managebook')   App.set({ manage:null, confirmed:null });
@@ -2235,6 +2476,7 @@ function onResInput(e){
   else if (act === 'bkPhone')  App.state.bkPhone = t.value;
   else if (act === 'bkCustom') App.state.bkCustom = t.value;
   else if (act === 'otpCode')  App.state.otpCode = t.value.replace(/\D/g, '').slice(0, 6);
+  else if (act === 'editTime') App.state.editTime = t.value;
   else if (act === 'periodFrom') App.state.periodFrom = t.value;
   else if (act === 'periodTo')   App.state.periodTo = t.value;
   else if (act === 'schedstart'){ const sc = App.state.scheduleEdit; if (sc) sc[+t.dataset.wd].ranges[+t.dataset.ri][0] = t.value; }
@@ -2264,9 +2506,11 @@ function onResChange(e){
   else if (act === 'phone')    App.state.phone = t.value;
   else if (act === 'email')    App.state.email = t.value;
   else if (act === 'bkCustom') App.set({ bkCustom: t.value, bkSlot: null, barberError:'' });
+  else if (act === 'editTime') App.state.editTime = t.value;
 }
-// écoute les mêmes actions sur la zone client (#reserver) ET l'overlay planning (#planning)
-['reserver','planning'].forEach(function(id){
+// écoute les mêmes actions sur la zone client (#reserver), l'overlay planning (#planning)
+// et le panneau « Mes rendez-vous » (#myrdv) — tous trois sont hors de #reserver
+['reserver','planning','myrdv'].forEach(function(id){
   const el = document.getElementById(id); if (!el) return;
   el.addEventListener('click', onResClick);
   el.addEventListener('input', onResInput);
@@ -2276,6 +2520,16 @@ function onResChange(e){
 document.getElementById('barberToggle').addEventListener('click', () => {
   App.openPlanning();
 });
+/* onglet « Mes RDV » du menu + fermeture du panneau (fond / touche Échap) */
+(function(){
+  const nav = document.getElementById('navMyRdv');
+  if (nav) nav.addEventListener('click', (e) => { e.preventDefault(); App.openMyRdv(); });
+  const back = document.getElementById('myrdvBack');
+  if (back) back.addEventListener('click', () => App.closeMyRdv());
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && App.state.myRdvOpen) App.closeMyRdv();
+  });
+})();
 
 /* clic sur une prestation de "La carte" -> pré-sélection + redirection vers le planning */
 document.getElementById('menu').addEventListener('click', (e) => {
