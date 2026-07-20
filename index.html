@@ -1582,7 +1582,9 @@ const App = {
       .filter(b => b.date < iso || (b.date === iso && timeToMin(b.time) < nowMin))
       .sort((a, z) => (a.date + a.time) > (z.date + z.time) ? -1 : 1);   // le plus récent en premier
   },
-  openMyRdv(){ document.body.style.overflow = 'hidden'; this.set({ myRdvOpen:true }); },
+  // on relit le planning à l'ouverture : sinon le client peut voir pendant 20 s
+  // un rendez-vous que Giovany vient d'annuler ou de déplacer
+  openMyRdv(){ document.body.style.overflow = 'hidden'; this.set({ myRdvOpen:true }); this.refresh(); },
   closeMyRdv(){ document.body.style.overflow = ''; this.set({ myRdvOpen:false }); },
   // déplacer un RDV depuis le panneau : réutilise le mode « déplacement » déjà en place
   moveMine(key){
@@ -1934,8 +1936,19 @@ const App = {
     } catch(e){}
   },
   async cancelBooking(key){
+    const sl = this.state.bookings[key];
+    // un DÉPLACEMENT par Giovany est convenu d'avance avec le client, donc silencieux ;
+    // une ANNULATION par le salon doit toujours être signalée, sinon le client se déplace pour rien
+    if (sl && !sl.blocked && !this.state.contacts) await this.loadContacts();
+    const c = (this.state.contacts || {})[key];
     await this.delStore(key);
     this.removeContact(key);
+    if (sl && !sl.blocked && c && c.email){
+      const us = key.indexOf('_');
+      this.emailClient({ name:c.name || sl.name || '', email:c.email, phone:c.phone || '',
+        service:sl.service || '', price:sl.price || '',
+        date:key.slice(0, us), time:key.slice(us + 1), cancelled:true });
+    }
     const bookings = await this.fetchStore();
     this.set({ bookings });
   },
@@ -2735,6 +2748,8 @@ if ('serviceWorker' in navigator) {
 }
 setInterval(() => App.refresh(), 20000);
 window.addEventListener('focus', () => App.refresh());
+// sur téléphone, revenir sur l'onglet ou rouvrir l'app ne déclenche pas toujours "focus"
+document.addEventListener('visibilitychange', () => { if (!document.hidden) App.refresh(); });
 
 /* ---------------- révélations au scroll ---------------- */
 const io = new IntersectionObserver((ents) => {
