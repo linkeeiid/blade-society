@@ -39,13 +39,14 @@ const OTP_MAX_PER_PHONE   = 3;              // codes max par numéro / heure
 const OTP_MAX_PER_IP      = 8;              // codes max par appareil (IP) / heure
 const OTP_MAX_PROBES_PER_IP = 30;           // requêtes max par appareil / heure (numéros déjà vérifiés inclus)
 const REMIND_MAX_PER_IP   = 5;              // rappels immédiats max par appareil / heure
+const LINK_TTL_S          = 14 * 24 * 3600; // durée de vie d'un lien court de gestion (14 jours)
 const OTP_VERIFIED_TTL_S  = 180 * 24 * 3600; // un numéro vérifié le reste 180 jours
 
 export default {
   async fetch(req, env) {
     const cors = {
       'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Methods': 'POST, OPTIONS',
+      'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
       'Access-Control-Allow-Headers': 'Content-Type',
     };
     if (req.method === 'OPTIONS') return new Response(null, { headers: cors });
@@ -170,6 +171,19 @@ export default {
          Les seuls envois de SMS restants sont le code de vérification (/otp/send,
          plafonné) et le rappel 24h (Cron interne). */
 
+      /* ====== Résolution d'un lien court reçu par SMS (bladesociety.fr/?r=XXXXXXX) ======
+         Rend au site les informations du rendez-vous pour ouvrir l'écran de gestion,
+         y compris sur un appareil qui n'a jamais servi à réserver.
+         Même modèle de sécurité que le lien de l'email : connaître le code suffit,
+         et il expire au bout de 14 jours. */
+      if (url.pathname.indexOf('/link/') === 0 && (req.method === 'GET' || req.method === 'POST')) {
+        const code = url.pathname.slice(6);
+        if (!/^[A-Za-z0-9_-]{4,16}$/.test(code)) return reply({ error: 'bad_code' }, 400, cors);
+        const raw = await env.SUBS.get('lnk:' + code);
+        if (!raw) return reply({ error: 'expired' }, 404, cors);
+        return reply(JSON.parse(raw), 200, cors);
+      }
+
       /* ====== Rappel immédiat : rendez-vous pris à moins de 24h ======
          Appelé par le site juste après une réservation. La fenêtre des 24h ne se
          présentera jamais pour ces créneaux : le rappel part donc tout de suite.
@@ -207,7 +221,8 @@ export default {
         const c = contacts[key];
         if (!c || !c.phone) return reply({ ok: true, skipped: 'no_phone' }, 200, cors);
         const us = key.indexOf('_');
-        const r2 = await sendBrevoSms(c.phone, reminderSms(key.slice(0, us), key.slice(us + 1), now.date), env);
+        const link = await shortManageLink(key, slot, c, env);
+        const r2 = await sendBrevoSms(c.phone, reminderSms(key.slice(0, us), key.slice(us + 1), now.date, link), env);
         if (r2.ok) { reminded24[key] = true; await env.SUBS.put('reminded24', JSON.stringify(reminded24)); }
         return reply({ ok: r2.ok, sent: r2.ok }, 200, cors);
       }
@@ -333,14 +348,31 @@ async function sendBrevoSms(phone, content, env) {
 function nowLeft(ts) {
   return Math.max(60, OTP_TTL_S - (Math.floor(Date.now() / 1000) - ts));
 }
-/* Texte du rappel client (sans accents : tient en 1 seul SMS facturé).
-   « aujourd'hui » quand le rendez-vous a été pris à moins de 24h du créneau. */
-function reminderSms(date, time, todayIso) {
+/* Lien court pour le SMS : bladesociety.fr/?r=XXXXXXX
+   Le lien de gestion complet fait ~96 caractères — il ferait exploser la taille du message.
+   Le code donne accès au rendez-vous (même principe que le lien reçu par email) et expire. */
+async function shortManageLink(key, slot, contact, env) {
+  try {
+    const code = b64uEnc(crypto.getRandomValues(new Uint8Array(6))).slice(0, 7);
+    await env.SUBS.put('lnk:' + code, JSON.stringify({
+      key, tok: (slot && slot.tok) || '',
+      email: (contact && contact.email) || '', phone: (contact && contact.phone) || '',
+    }), { expirationTtl: LINK_TTL_S });
+    const site = (env.SITE_URL || 'https://bladesociety.fr').replace(/\/$/, '');
+    return site.replace(/^https?:\/\//, '') + '/?r=' + code;   // sans le https:// : 8 caractères gagnés
+  } catch (e) { return ''; }
+}
+
+/* Texte du rappel client.
+   ATTENTION : pas d'emoji ni de « ô/ê/â/À » — ces caractères font basculer le SMS en
+   encodage Unicode (70 caractères par SMS au lieu de 160) et TRIPLENT la facture.
+   « é » et « à » sont en revanche acceptés par l'encodage standard. */
+function reminderSms(date, time, todayIso, link) {
   const d = date.split('-');
   const quand = (date === todayIso) ? "aujourd'hui" : 'demain';
-  return 'Blade Society\n'
-    + 'Rappel : votre RDV est ' + quand + ' ' + d[2] + '/' + d[1] + ' a ' + frTimeFR(time) + '.\n'
-    + 'Modification ou annulation : lien dans votre email.\n'
+  return 'Blade Society\n\n'
+    + 'Rappel : votre rendez-vous est prévu ' + quand + ' ' + d[2] + '/' + d[1] + ' à ' + frTimeFR(time) + '.\n\n'
+    + (link ? 'Modifier ou annuler : ' + link : 'Modifier ou annuler : le lien est dans votre email.') + '\n\n'
     + 'A bientot !';
 }
 // minutes restantes avant un créneau "aaaa-mm-jj_hh:mm", vues de Paris
@@ -589,7 +621,8 @@ async function sendReminders(env) {
        et pas encore rappelé reçoit son SMS. Ça couvre le cas d'une réservation prise
        à moins de 24h du créneau, pour laquelle la fenêtre des 24h ne se présentera jamais. */
     if (minsUntil > 0 && minsUntil <= 1450 && !reminded24[key] && c.phone && env.SMS_SENDER) {
-      const r = await sendBrevoSms(c.phone, reminderSms(date, time, now.date), env);
+      const link = await shortManageLink(key, sl, c, env);
+      const r = await sendBrevoSms(c.phone, reminderSms(date, time, now.date, link), env);
       if (r.ok) { reminded24[key] = true; changed24 = true; }
     }
   }

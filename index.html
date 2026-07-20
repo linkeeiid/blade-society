@@ -1530,7 +1530,36 @@ const App = {
     const us = key.indexOf('_');
     const date = key.slice(0, us), time = key.slice(us + 1);
     this.set({ bookings, manage:{ key, tok, slot, date, time, email: email || '', phone: phone || '' } });
+    this.rememberBooking({ key, tok, date, time, slot, email, phone });
     this.scrollToRes();
+  },
+  /* Mémorise sur CET appareil un rendez-vous ouvert via un lien (email ou SMS).
+     Sans ça, un client qui réserve depuis l'app installée puis ouvre le lien dans son
+     navigateur ne retrouve rien dans « Mes rendez-vous » : les deux ne partagent pas
+     toujours le même stockage (c'est notamment le cas sur iPhone). */
+  rememberBooking(b){
+    if (!b || !b.key) return;
+    const mine = this.state.myBookings || [];
+    if (mine.some(x => x.key === b.key)) return;
+    const sl = b.slot || {};
+    const next = mine.concat([{ key:b.key, tok:b.tok || sl.tok || '',
+      service: sl.service || '', price: sl.price || '', serviceNo: sl.serviceNo || '',
+      name: sl.name || '', email: b.email || '', phone: b.phone || '',
+      date: b.date, time: b.time }]);
+    this.state.myBookings = next;
+    try { localStorage.setItem('bs_my_bookings', JSON.stringify(next)); } catch(e){}
+  },
+  /* Arrivée depuis le lien court d'un SMS : bladesociety.fr/?r=XXXXXXX */
+  async openShortLink(code){
+    try { history.replaceState(null, '', location.href.split('#')[0].split('?')[0]); } catch(e){}
+    if (!CFG.PUSH_ENDPOINT) return;
+    try {
+      const r = await fetch(CFG.PUSH_ENDPOINT.replace(/\/$/, '') + '/link/' + encodeURIComponent(code));
+      if (!r.ok){ this.set({ manage:{ missing:true } }); this.scrollToRes(); return; }
+      const d = await r.json();
+      if (!d || !d.key){ this.set({ manage:{ missing:true } }); this.scrollToRes(); return; }
+      await this.openManage(d.key, d.tok || '', d.email || '', d.phone || '');
+    } catch(e){}
   },
   // ramène sur la zone réservation (2 passes : la hauteur de la page change au re-rendu)
   scrollToRes(){
@@ -2659,7 +2688,9 @@ if (App.state.barberAuthed) App.loadContacts();   // recharge les tél si barber
 try {
   const qs = new URLSearchParams(location.search);
   const rdv = qs.get('rdv');
+  const short = qs.get('r');                       // lien court reçu par SMS
   if (rdv) App.openManage(rdv, qs.get('t') || '', qs.get('e') || '', qs.get('p') || '');
+  else if (short) App.openShortLink(short);
 } catch(e){}
 
 /* lien "Planning" du menu */
