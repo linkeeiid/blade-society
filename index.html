@@ -1656,8 +1656,17 @@ const App = {
     this.set({ submitting:true, error:'' });
     const fresh = await this.fetchStore();
     if (fresh[newKey]){ this.set({ bookings:fresh, submitting:false, selectedSlot:null, error:'Ce créneau vient d’être pris. Choisissez-en un autre.' }); return; }
+    // le créneau ACTUEL dans Firebase est la source de vérité pour le nom / la prestation :
+    // on en hérite plutôt que de se fier aux données locales de l'appareil, qui peuvent être
+    // incomplètes (RDV pris avant la mise à jour, ou ouvert depuis l'app) — sinon le nom
+    // était perdu et le planning affichait « Client ».
+    const old = fresh[r.oldKey] || {};
+    const keepName    = old.name      || r.name      || '';
+    const keepService = old.service   || r.service   || '';
+    const keepSvcNo   = old.serviceNo || r.serviceNo || '';
+    const keepPrice   = old.price     || r.price     || '';
     const newTok = Math.random().toString(36).slice(2, 10);
-    const slot = { name:r.name, service:r.service, serviceNo:r.serviceNo, price:r.price, ts:Date.now(), tok:newTok };
+    const slot = { name:keepName, service:keepService, serviceNo:keepSvcNo, price:keepPrice, ts:Date.now(), tok:newTok };
     const ok = await this.putStore(newKey, slot);
     if (!ok){
       const after = await this.fetchStore();
@@ -1667,17 +1676,17 @@ const App = {
     await this.delStore(r.oldKey);                 // libère l'ancien créneau
     // coordonnées reportées sur le nouveau créneau, EN SÉQUENCE (jamais en parallèle)
     await this.moveContact(r.oldKey, newKey);
-    if (r.phone) await this.saveContact({ key:newKey, phone:r.phone, name:r.name, email:r.email });
+    if (r.phone) await this.saveContact({ key:newKey, phone:r.phone, name:keepName, email:r.email });
     this.remindIfSoon({ key:newKey });             // rappel si le nouveau créneau est à moins de 24h
     const bookings = await this.fetchStore();
     const newDate = this.state.selectedDate, newTime = this.state.selectedSlot;
-    const ctx = { name:r.name, email:r.email, phone:r.phone, service:r.service, price:r.price,
+    const ctx = { name:keepName, email:r.email, phone:r.phone, service:keepService, price:keepPrice,
       date:newDate, time:newTime, key:newKey, tok:newTok, moved:true, oldDate:r.oldDate, oldTime:r.oldTime };
     this.emailClient(ctx);                          // email "rendez-vous modifié" au client
     this.pushBarber(ctx);                           // notif push au barber (déplacé)
     let mine = (this.state.myBookings || []).filter(b => b.key !== r.oldKey);
-    mine = mine.concat([{ key:newKey, service:r.service, price:r.price, serviceNo:r.serviceNo,
-      name:r.name, email:r.email, phone:r.phone, tok:newTok, date:newDate, time:newTime }]);
+    mine = mine.concat([{ key:newKey, service:keepService, price:keepPrice, serviceNo:keepSvcNo,
+      name:keepName, email:r.email, phone:r.phone, tok:newTok, date:newDate, time:newTime }]);
     try { localStorage.setItem('bs_my_bookings', JSON.stringify(mine)); } catch(e){}
     this.set({ bookings, myBookings:mine, reschedule:null, selectedSlot:null, submitting:false,
       manage:{ done:true, moved:true } });
