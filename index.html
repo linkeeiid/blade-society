@@ -4,8 +4,16 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="google-site-verification" content="dI6IC-ghlvRbdBHebnD7LAj8PshQ83NXnc4xK_7hALw" />
-<title>Blade Society — Architecte capillaire · Villeurbanne</title>
-<meta name="description" content="Blade Society — barbershop privé sur rendez-vous à Villeurbanne. Travail au ciseau, dégradés millimétrés, rasage traditionnel. Réservation en ligne.">
+<title>Blade Society — Barbier à Villeurbanne · Barbershop sur RDV</title>
+<meta name="description" content="Barbier à Villeurbanne (Grandclément / Gratte-Ciel) : dégradés, barbe & rasage traditionnel. Barbershop privé sur rendez-vous — réservez en ligne en 1 min.">
+<meta name="keywords" content="barbier Villeurbanne, barber Villeurbanne, barbershop Villeurbanne, coiffeur homme Villeurbanne, dégradé Villeurbanne, barbe Villeurbanne, rasage traditionnel Lyon, Blade Society">
+<!-- URL de référence : évite que Google indexe la version github.io à la place du vrai domaine -->
+<link rel="canonical" href="https://bladesociety.fr/">
+<meta name="robots" content="index, follow, max-image-preview:large">
+<meta name="geo.region" content="FR-69">
+<meta name="geo.placename" content="Villeurbanne">
+<meta name="geo.position" content="45.7558280;4.8957092">
+<meta name="ICBM" content="45.7558280, 4.8957092">
 <!-- Aperçu de partage (Instagram, WhatsApp, Snap, Facebook...) -->
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Blade Society">
@@ -20,30 +28,58 @@
 <link rel="icon" href="/favicon.ico" sizes="any">
 <link rel="icon" type="image/png" sizes="512x512" href="assets/icon-512.png">
 <link rel="icon" type="image/png" sizes="192x192" href="assets/icon-192.png">
-<!-- Données structurées : aide Google à afficher le nom + le logo du salon -->
+<!-- Données structurées : dit à Google que c'est un barbier LOCAL à Villeurbanne -->
 <script type="application/ld+json">
 {
   "@context": "https://schema.org",
-  "@type": "HairSalon",
+  "@type": ["HairSalon","BarberShop"],
+  "@id": "https://bladesociety.fr/#barbershop",
   "name": "Blade Society",
-  "image": "https://bladesociety.fr/assets/og.jpg",
+  "alternateName": "Blade Society Barbershop Villeurbanne",
+  "description": "Barbier à Villeurbanne : coupes sur-mesure, dégradés, barbe et rasage traditionnel. Barbershop privé sur rendez-vous, quartier Grandclément / Gratte-Ciel.",
+  "image": [
+    "https://bladesociety.fr/assets/og.jpg",
+    "https://bladesociety.fr/assets/icon-512.png"
+  ],
   "logo": "https://bladesociety.fr/assets/icon-512.png",
   "url": "https://bladesociety.fr",
   "telephone": "+33644164499",
+  "email": "contact@bladesociety.fr",
   "priceRange": "€€",
+  "currenciesAccepted": "EUR",
+  "paymentAccepted": "Espèces, Carte bancaire",
   "address": {
     "@type": "PostalAddress",
     "streetAddress": "44 Avenue Paul Kruger",
     "postalCode": "69100",
     "addressLocality": "Villeurbanne",
+    "addressRegion": "Auvergne-Rhône-Alpes",
     "addressCountry": "FR"
   },
+  "geo": {
+    "@type": "GeoCoordinates",
+    "latitude": 45.7558280,
+    "longitude": 4.8957092
+  },
+  "hasMap": "https://www.google.com/maps?q=44+Avenue+Paul+Kruger+69100+Villeurbanne",
+  "areaServed": [
+    { "@type": "City", "name": "Villeurbanne" },
+    { "@type": "City", "name": "Lyon" },
+    { "@type": "Place", "name": "Grandclément" },
+    { "@type": "Place", "name": "Gratte-Ciel" }
+  ],
   "openingHoursSpecification": [{
     "@type": "OpeningHoursSpecification",
     "dayOfWeek": ["Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"],
     "opens": "11:00",
     "closes": "20:00"
   }],
+  "makesOffer": [
+    { "@type": "Offer", "itemOffered": { "@type": "Service", "name": "Coupe homme & dégradé" } },
+    { "@type": "Offer", "itemOffered": { "@type": "Service", "name": "Taille de barbe" } },
+    { "@type": "Offer", "itemOffered": { "@type": "Service", "name": "Rasage traditionnel" } },
+    { "@type": "Offer", "itemOffered": { "@type": "Service", "name": "Coupe + Barbe complète" } }
+  ],
   "sameAs": [
     "https://www.instagram.com/blade__society/",
     "https://www.tiktok.com/@blade__society"
@@ -504,6 +540,8 @@
   .hours div{display:flex;justify-content:space-between;font-family:'Space Mono',monospace;font-size:13px;color:var(--mut);padding:11px 0;border-bottom:var(--bw) solid var(--line)}
   .hours div:last-child{border-bottom:none}
   .hours div span:last-child{color:var(--ink)}
+  .loc-lede{font-family:'Space Mono',monospace;font-size:12.5px;line-height:1.75;color:var(--mut);max-width:440px;margin:0 0 26px}
+  .loc-lede strong{color:var(--ink);font-weight:400}
   .loc-map{min-height:400px;position:relative;border-left:var(--bw) solid var(--line);filter:grayscale(1) contrast(1.1) brightness(0.8)}
   .loc-map iframe{position:absolute;inset:0;width:100%;height:100%;border:0}
 
@@ -536,7 +574,7 @@
 <!-- ============================ NAV ============================ -->
 <nav>
   <a class="brand" href="#top">
-    <img src="assets/logo-fondu.png" alt="">
+    <img src="assets/logo-fondu.png" alt="Blade Society — barbier à Villeurbanne">
     <span>Blade Society</span>
   </a>
   <div class="navlinks">
@@ -558,7 +596,7 @@
   <div class="hero-fade"></div>
 
   <div class="hero-meta">
-    <span>BARBIER PRIVÉ / SUR RENDEZ-VOUS</span>
+    <span>BARBIER PRIVÉ · VILLEURBANNE / SUR RENDEZ-VOUS</span>
     <span class="hide-sm">44 AVENUE PAUL KRUGER, VILLEURBANNE</span>
   </div>
 
@@ -642,7 +680,8 @@
   <div class="loc">
     <div class="reveal loc-info" data-reveal>
       <div class="eyebrow" style="margin-bottom:36px">L'ATELIER</div>
-      <h2 class="head">Nous trouver</h2>
+      <h2 class="head">Barbier à Villeurbanne</h2>
+      <p class="loc-lede">Blade Society, votre barbershop à <strong>Villeurbanne</strong> — quartier Grandclément, à quelques minutes des Gratte-Ciel et de Lyon. Coupe, dégradé, taille de barbe et rasage traditionnel, uniquement sur rendez-vous.</p>
       <div class="a1">44 Avenue Paul Kruger</div>
       <div class="a2">69100 Villeurbanne, France</div>
       <div class="hours">
@@ -662,10 +701,10 @@
   <div class="foot-top">
     <div class="foot-brand">
       <div class="row">
-        <img src="assets/logo-fondu.png" alt="">
+        <img src="assets/logo-fondu.png" alt="Blade Society — barbershop à Villeurbanne">
         <span class="nm">Blade Society</span>
       </div>
-      <p>Barbershop privé sur rendez-vous. L'art du sur-mesure capillaire.</p>
+      <p>Barbier à Villeurbanne, quartier Grandclément. Barbershop privé sur rendez-vous : dégradés, barbe et rasage traditionnel. L'art du sur-mesure capillaire, à deux pas de Lyon.</p>
     </div>
     <div class="foot-col">
       <h4>// Suivre</h4>
@@ -937,7 +976,7 @@ function renderGallery(){
   const extra = Math.max(0, GALLERY.length - GALLERY_VISIBLE);
   document.getElementById('gallery').innerHTML = GALLERY.slice(0, GALLERY_VISIBLE).map((g, i) => `
     <div class="gcell" data-idx="${i}">
-      <img src="${g.src}" alt="Réalisation Blade Society n°${i + 1}" loading="lazy" onerror="this.style.display='none'">
+      <img src="${g.src}" alt="Coupe & barbe réalisées chez Blade Society, barbier à Villeurbanne — réalisation n°${i + 1}" loading="lazy" onerror="this.style.display='none'">
       ${(i === GALLERY_VISIBLE - 1 && extra > 0) ? `<div class="gmore">+${extra} photos</div>` : ''}
     </div>`).join('');
 }
@@ -1018,7 +1057,7 @@ loadContent();
   const show = (i) => {
     cur = (i + GALLERY.length) % GALLERY.length;
     lbImg.src = GALLERY[cur].src;
-    lbImg.alt = 'Réalisation Blade Society n°' + (cur + 1);
+    lbImg.alt = 'Coupe & barbe chez Blade Society, barbier à Villeurbanne — réalisation n°' + (cur + 1);
     lbCount.textContent = (cur + 1) + ' / ' + GALLERY.length;
     resetImg(false);                       // on repart toujours de la photo entière
   };
