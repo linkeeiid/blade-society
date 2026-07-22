@@ -86,40 +86,6 @@
   ]
 }
 </script>
-<!-- FAQ : peut afficher un bloc de questions/réponses directement dans Google -->
-<script type="application/ld+json">
-{
-  "@context": "https://schema.org",
-  "@type": "FAQPage",
-  "mainEntity": [
-    {
-      "@type": "Question",
-      "name": "Où se trouve le barbier Blade Society ?",
-      "acceptedAnswer": { "@type": "Answer", "text": "Blade Society est un barbershop situé au 44 Avenue Paul Kruger, 69100 Villeurbanne, dans le quartier Grandclément, à quelques minutes des Gratte-Ciel et de Lyon." }
-    },
-    {
-      "@type": "Question",
-      "name": "Comment prendre rendez-vous chez Blade Society ?",
-      "acceptedAnswer": { "@type": "Answer", "text": "La réservation se fait en ligne, 24h/24, sur bladesociety.fr. Vous choisissez votre créneau et recevez une confirmation par SMS et par e-mail, avec un rappel avant le rendez-vous." }
-    },
-    {
-      "@type": "Question",
-      "name": "Quelles prestations propose ce barbier à Villeurbanne ?",
-      "acceptedAnswer": { "@type": "Answer", "text": "Coupe homme et dégradés, taille et entretien de la barbe, rasage traditionnel, ainsi que la formule coupe + barbe complète. Chaque prestation est réalisée sur-mesure, un client à la fois." }
-    },
-    {
-      "@type": "Question",
-      "name": "Quels sont les horaires d'ouverture ?",
-      "acceptedAnswer": { "@type": "Answer", "text": "Le salon est ouvert du mardi au dimanche, de 11h à 20h. Fermé le lundi." }
-    },
-    {
-      "@type": "Question",
-      "name": "Faut-il obligatoirement réserver ?",
-      "acceptedAnswer": { "@type": "Answer", "text": "Oui. Blade Society est un barbershop privé sur rendez-vous : chaque créneau est réservé à un seul client, pour un travail soigné et sans attente." }
-    }
-  ]
-}
-</script>
 <!-- PWA : app installable -->
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#0a0a0a">
@@ -576,14 +542,6 @@
   .hours div span:last-child{color:var(--ink)}
   .loc-lede{font-family:'Space Mono',monospace;font-size:12.5px;line-height:1.75;color:var(--mut);max-width:440px;margin:0 0 26px}
   .loc-lede strong{color:var(--ink);font-weight:400}
-  /* ---- FAQ (référencement local) ---- */
-  .faq{max-width:860px}
-  .faq-item{border-top:var(--bw) solid var(--line);padding:22px 0}
-  .faq-item:last-child{border-bottom:var(--bw) solid var(--line)}
-  .faq-q{font-family:'Space Mono',monospace;font-size:15px;color:var(--ink);margin:0 0 10px;font-weight:700;letter-spacing:0.01em}
-  .faq-a{font-family:'Space Mono',monospace;font-size:12.5px;line-height:1.8;color:var(--mut);margin:0}
-  .faq-a a{color:var(--ink);text-underline-offset:3px}
-  .faq-a strong{color:var(--ink);font-weight:400}
   .loc-map{min-height:400px;position:relative;border-left:var(--bw) solid var(--line);filter:grayscale(1) contrast(1.1) brightness(0.8)}
   .loc-map iframe{position:absolute;inset:0;width:100%;height:100%;border:0}
 
@@ -717,36 +675,6 @@
   </div>
 </section>
 
-<!-- ============================ FAQ (référencement) ============================ -->
-<section id="faq" class="sect">
-  <div class="reveal wrap" data-reveal>
-    <div class="eyebrow">QUESTIONS FRÉQUENTES</div>
-    <h2 class="head" style="margin-bottom:36px">Barbier à Villeurbanne — vos questions</h2>
-    <div class="faq">
-      <div class="faq-item">
-        <h3 class="faq-q">Où se trouve le barbier Blade Society&nbsp;?</h3>
-        <p class="faq-a">Blade Society est un barbershop situé au <strong>44 Avenue Paul Kruger, 69100 Villeurbanne</strong>, dans le quartier Grandclément, à quelques minutes des Gratte-Ciel et de Lyon.</p>
-      </div>
-      <div class="faq-item">
-        <h3 class="faq-q">Comment prendre rendez-vous chez Blade Society&nbsp;?</h3>
-        <p class="faq-a">La réservation se fait <strong>en ligne, 24h/24</strong>, directement sur <a href="https://bladesociety.fr/#reserver">bladesociety.fr</a>. Vous choisissez votre créneau et recevez une confirmation par SMS et par e-mail, avec un rappel avant le rendez-vous.</p>
-      </div>
-      <div class="faq-item">
-        <h3 class="faq-q">Quelles prestations propose ce barbier à Villeurbanne&nbsp;?</h3>
-        <p class="faq-a">Coupe homme et <strong>dégradés millimétrés</strong>, taille et entretien de la barbe, <strong>rasage traditionnel</strong>, ainsi que la formule coupe + barbe complète. Chaque prestation est réalisée sur-mesure, un client à la fois.</p>
-      </div>
-      <div class="faq-item">
-        <h3 class="faq-q">Quels sont les horaires d'ouverture&nbsp;?</h3>
-        <p class="faq-a">Le salon est ouvert du <strong>mardi au dimanche, de 11h à 20h</strong>. Fermé le lundi.</p>
-      </div>
-      <div class="faq-item">
-        <h3 class="faq-q">Faut-il obligatoirement réserver&nbsp;?</h3>
-        <p class="faq-a">Oui. Blade Society est un <strong>barbershop privé sur rendez-vous</strong> : chaque créneau est réservé à un seul client, pour un travail soigné et sans attente.</p>
-      </div>
-    </div>
-  </div>
-</section>
-
 <!-- ============================ LOCALISATION ============================ -->
 <section id="contact">
   <div class="loc">
@@ -801,6 +729,7 @@
     </div>
     <span>© 2026 BLADE SOCIETY — TOUS DROITS RÉSERVÉS</span>
     <span>44 AV. PAUL KRUGER, 69100 VILLEURBANNE</span>
+    <a class="foot-legal" href="faq.html">FAQ</a>
     <a class="foot-legal" href="mentions-legales.html">Mentions légales &amp; Confidentialité</a>
   </div>
 </footer>
