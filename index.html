@@ -2523,8 +2523,11 @@ const App = {
       const us = s.confirmCancel.indexOf('_');
       const day = s.confirmCancel.slice(0, us), time = s.confirmCancel.slice(us + 1);
       const who = (sl && sl.name) ? sl.name : 'ce client';
+      // le fond porte data-act="confirmCancelNo" -> cliquer À CÔTÉ de la fenêtre la ferme.
+      // (pas de stopPropagation sur la boîte : ça empêcherait les boutons d'être captés
+      //  par la délégation d'événements ; closest() trouve d'abord le bouton cliqué.)
       confirmHtml = `<div class="cfm-back" data-act="confirmCancelNo">
-        <div class="cfm-box" onclick="event.stopPropagation()">
+        <div class="cfm-box">
           <div class="cfm-title">Annuler ce rendez-vous&nbsp;?</div>
           <div class="cfm-sub">${esc(who)} — ${esc(this.labelOf(day))} à ${esc(frTime(time))}</div>
           <p class="cfm-note">Le créneau sera libéré et le client prévenu par email. Cette action est définitive.</p>
