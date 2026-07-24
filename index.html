@@ -156,6 +156,37 @@
     .nav-badge{margin-left:5px}
   }
 
+  /* ---- Historique (barber) ---- */
+  .hist-tabs{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px}
+  .hist-tab{background:none;border:var(--bw) solid var(--line);border-radius:var(--radius);color:var(--mut);
+    padding:9px 13px;font-family:'Space Mono',monospace;font-size:11px;letter-spacing:0.04em;cursor:pointer;
+    display:flex;align-items:center;gap:7px;transition:all .2s}
+  .hist-tab span{background:var(--panel2);border-radius:20px;padding:1px 7px;font-size:10px;color:var(--faint)}
+  .hist-tab:hover{border-color:var(--ink);color:var(--ink)}
+  .hist-tab.on{background:var(--ink);color:#0d0d0d;border-color:var(--ink)}
+  .hist-tab.on span{background:rgba(0,0,0,0.15);color:#0d0d0d}
+  .hist-refresh{background:none;border:none;color:var(--faint);font-family:'Space Mono',monospace;font-size:11px;
+    cursor:pointer;margin-bottom:16px;padding:2px 0;text-decoration:underline;text-underline-offset:3px}
+  .hist-refresh:hover{color:var(--ink)}
+  .hist-list{display:flex;flex-direction:column}
+  .hist-row{display:flex;gap:13px;padding:15px 0;border-top:var(--bw) solid var(--line)}
+  .hist-row:last-child{border-bottom:var(--bw) solid var(--line)}
+  .hist-ic{flex:0 0 auto;width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+    font-size:14px;border:var(--bw) solid var(--line);color:var(--mut)}
+  .hist-ic.ok{color:#5fcf8a;border-color:rgba(95,207,138,0.4)}
+  .hist-ic.no{color:#e0846f;border-color:rgba(224,132,111,0.4)}
+  .hist-ic.mv{color:#6aa3e0;border-color:rgba(106,163,224,0.4)}
+  .hist-main{min-width:0;flex:1}
+  .hist-top{display:flex;flex-wrap:wrap;gap:6px 10px;align-items:baseline}
+  .hist-name{font-family:'Space Mono',monospace;font-size:13.5px;font-weight:700;color:var(--ink)}
+  .hist-act{font-family:'Space Mono',monospace;font-size:11px}
+  .hist-act.ok{color:#5fcf8a}.hist-act.no{color:#e0846f}.hist-act.mv{color:#6aa3e0}
+  .hist-rdv{font-family:'Space Mono',monospace;font-size:12px;color:var(--mut);margin-top:4px}
+  .hist-from{font-family:'Space Mono',monospace;font-size:11px;color:var(--faint);margin-top:2px}
+  .hist-when{font-family:'Space Mono',monospace;font-size:10.5px;color:var(--faint);margin-top:5px}
+  .hist-empty{font-family:'Space Mono',monospace;font-size:12.5px;color:var(--faint);line-height:1.8;
+    border:var(--bw) dashed var(--line);border-radius:var(--radius);padding:24px 18px;text-align:center;margin-top:4px}
+
   /* ============================ MODIFICATIONS (overlay barber) ============================ */
   .modifs{position:fixed;inset:0;z-index:250;background:var(--bg);overflow-y:auto;display:none}
   .modifs.open{display:block}
@@ -598,6 +629,7 @@
     <a class="hide-sm" href="#galerie">Galerie</a>
     <a id="navMyRdv" href="#" style="display:none" aria-label="Mes rendez-vous"><span class="nav-ico" aria-hidden="true">🗓</span><span class="nav-lbl">Mes RDV</span><span class="nav-badge" id="myRdvBadge">0</span></a>
     <a id="navPlanning" class="navbarber" href="#reserver" style="display:none">Planning</a>
+    <a id="navHistorique" class="navbarber" href="#" style="display:none">Historique</a>
     <a id="navModifs" class="navbarber" href="#" style="display:none">Modifications</a>
     <a class="cta" href="#reserver">Réserver →</a>
   </div>
@@ -764,6 +796,14 @@
     <button class="modifs-close" data-act="closemodifs" aria-label="Fermer">✕</button>
   </div>
   <div class="modifs-body" id="modifsContent"></div>
+</div>
+
+<div id="historique" class="modifs">
+  <div class="modifs-bar">
+    <span class="modifs-title">Historique</span>
+    <button class="modifs-close" data-act="closehistorique" aria-label="Fermer">✕</button>
+  </div>
+  <div class="modifs-body" id="historiqueContent"></div>
 </div>
 
 <!-- ============================ MES RENDEZ-VOUS (client) ============================ -->
@@ -1219,6 +1259,7 @@ const App = {
     barberOpen:false, barberPw:'', barberAuthed:false, barberError:'', barberDay:'', pushOn:false,
     barberCalY:0, barberCalM:0,
     adminPwInput:'', cmsUploading:false, cmsError:'', textEdit:null, textSaved:false, modifsOpen:false, planningOpen:false,
+    historiqueOpen:false, history:null, historyLoading:false, historyFilter:'all',
     contacts:null, contactsAsk:false,
     barberPanel:null, bkName:'', bkPhone:'', bkService:null, bkDate:'', bkSlot:null, bkCustom:'', periodFrom:'', periodTo:'', dayActionsOpen:false, scheduleEdit:null,
   },
@@ -1514,6 +1555,7 @@ const App = {
     this.notify(full);        // notification Telegram au barber (en arrière-plan)
     this.pushBarber(full);    // notification push (app) au barber (en arrière-plan)
     this.emailClient(full);   // email de confirmation au client (en arrière-plan) — pas de SMS ici
+    this.logHistory({ type:'created', source:'client', key, name, service:svc.name, price:svc.price });
     // le tél doit être enregistré AVANT de demander le rappel : c'est là que le Worker le lit
     Promise.resolve(this.saveContact(full)).then(() => this.remindIfSoon(full));
     try { rlt.push(now); localStorage.setItem('bs_bk_times', JSON.stringify(rlt)); } catch(e){}
@@ -1564,6 +1606,7 @@ const App = {
       this.emailClient(ctx);
       this.pushBarber(ctx);                  // Giovany est prévenu de l'annulation
     }
+    if (b) this.logHistory({ type:'cancelled', source:'client', key, name:b.name, service:b.service, price:b.price });
     const mine = (this.state.myBookings || []).filter(x => x.key !== key);
     try { localStorage.setItem('bs_my_bookings', JSON.stringify(mine)); } catch(e){}
     const bookings = await this.fetchStore();
@@ -1684,6 +1727,7 @@ const App = {
         date:m.date, time:m.time, cancelled:true };
       this.emailClient(ctx);
       this.pushBarber(ctx);
+      this.logHistory({ type:'cancelled', source:'client', key:m.key, name:m.slot.name, service:m.slot.service, price:m.slot.price });
     }
     this.set({ bookings, myBookings:mine, manage: Object.assign({}, m, { done:true }) });
   },
@@ -1739,6 +1783,7 @@ const App = {
       date:newDate, time:newTime, key:newKey, tok:newTok, moved:true, oldDate:r.oldDate, oldTime:r.oldTime };
     this.emailClient(ctx);                          // email "rendez-vous modifié" au client
     this.pushBarber(ctx);                           // notif push au barber (déplacé)
+    this.logHistory({ type:'moved', source:'client', key:newKey, oldKey:r.oldKey, name:keepName, service:keepService, price:keepPrice });
     let mine = (this.state.myBookings || []).filter(b => b.key !== r.oldKey);
     mine = mine.concat([{ key:newKey, service:keepService, price:keepPrice, serviceNo:keepSvcNo,
       name:keepName, email:r.email, phone:r.phone, tok:newTok, date:newDate, time:newTime }]);
@@ -1777,6 +1822,7 @@ const App = {
   refreshNav(){
     const disp = this.state.barberAuthed ? 'flex' : 'none';
     const p = document.getElementById('navPlanning'); if (p) p.style.display = disp;
+    const h = document.getElementById('navHistorique'); if (h) h.style.display = disp;
     const m = document.getElementById('navModifs');   if (m) m.style.display = disp;
     // « Mes RDV » : visible dès que le client a réservé au moins une fois sur cet appareil,
     // avec une pastille rouge indiquant le nombre de rendez-vous en cours
@@ -1811,6 +1857,13 @@ const App = {
     if (!CFG.PUSH_ENDPOINT || !from || !to) return;
     try { await fetch(this.cmsUrl('/contact/move'), { method:'POST', headers:{'Content-Type':'application/json'},
       body: JSON.stringify({ from, to }) }); } catch(e){}
+  },
+  // journal d'historique : trace chaque évènement (création/annulation/déplacement) + sa provenance.
+  // Envoi « au vol » (pas d'await) : ne doit jamais ralentir ni bloquer une réservation.
+  logHistory(evt){
+    if (!CFG.PUSH_ENDPOINT || !evt) return;
+    try { fetch(this.cmsUrl('/history/log'), { method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify(evt) }); } catch(e){}
   },
   removeContact(key){
     if (!CFG.PUSH_ENDPOINT || !key) return;
@@ -1937,6 +1990,86 @@ const App = {
   // ---- page "Modifications" (CMS regroupé) ----
   openModifs(){ document.body.style.overflow = 'hidden'; this.set({ modifsOpen:true }); },
   closeModifs(){ document.body.style.overflow = ''; this.set({ modifsOpen:false }); },
+
+  /* ---------------- Historique (réservé à Giovany) ---------------- */
+  openHistorique(){ document.body.style.overflow = 'hidden'; this.set({ historiqueOpen:true }); this.loadHistory(); },
+  closeHistorique(){ document.body.style.overflow = ''; this.set({ historiqueOpen:false }); },
+  async loadHistory(){
+    if (!CFG.PUSH_ENDPOINT || !this.state.barberAuthed) return;
+    this.set({ historyLoading:true });
+    try {
+      const r = await fetch(this.cmsUrl('/history'), { method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ pw: CFG.BARBER_PASSWORD }) });
+      if (!r.ok){ this.set({ historyLoading:false }); return; }
+      const d = await r.json();
+      const list = (d && d.history) ? d.history.slice().sort((a, b) => b.at - a.at) : [];   // plus récent en premier
+      this.set({ history:list, historyLoading:false });
+    } catch(e){ this.set({ historyLoading:false }); }
+  },
+  setHistoryFilter(f){ this.set({ historyFilter:f }); },
+  renderHistorique(){
+    const s = this.state;
+    if (s.historyLoading && !s.history) return `<div class="hist-empty">Chargement de l'historique…</div>`;
+    const all = s.history || [];
+    const filt = s.historyFilter || 'all';
+    const list = all.filter(e => filt === 'all'
+      || (filt === 'cancelled' && e.type === 'cancelled')
+      || (filt === 'moved' && e.type === 'moved')
+      || (filt === 'created' && e.type === 'created'));
+
+    const nCreated = all.filter(e => e.type === 'created').length;
+    const nCancel  = all.filter(e => e.type === 'cancelled').length;
+    const nMoved   = all.filter(e => e.type === 'moved').length;
+
+    const tab = (f, label, n) => `<button class="hist-tab${filt===f?' on':''}" data-act="histfilter" data-f="${f}">${label}<span>${n}</span></button>`;
+
+    // libellé « d'où ça vient »
+    const label = (e) => {
+      const by = e.source === 'barber' ? 'par vous' : 'par le client';
+      if (e.type === 'created')   return { ic:'＋', cls:'ok',   txt:'Réservé ' + by };
+      if (e.type === 'cancelled') return { ic:'✕', cls:'no',   txt:'Annulé ' + by };
+      if (e.type === 'moved')     return { ic:'↪', cls:'mv',   txt:'Déplacé ' + by };
+      return { ic:'•', cls:'', txt:e.type };
+    };
+
+    const rows = list.map(e => {
+      const l = label(e);
+      const when = this.histWhen(e.at);
+      const rdv = (e.date ? this.labelOf(e.date) : '?') + (e.time ? ' · ' + frTime(e.time) : '');
+      const from = (e.type === 'moved' && e.oldDate)
+        ? `<div class="hist-from">depuis ${esc(this.labelOf(e.oldDate))}${e.oldTime ? ' · ' + esc(frTime(e.oldTime)) : ''}</div>` : '';
+      return `<div class="hist-row">
+        <div class="hist-ic ${l.cls}">${l.ic}</div>
+        <div class="hist-main">
+          <div class="hist-top"><span class="hist-name">${esc(e.name || 'Client')}</span><span class="hist-act ${l.cls}">${esc(l.txt)}</span></div>
+          <div class="hist-rdv">${esc(rdv)}${e.service ? ' — ' + esc(e.service) : ''}${e.price ? ' · ' + esc(e.price) : ''}</div>
+          ${from}
+          <div class="hist-when">${esc(when)}</div>
+        </div>
+      </div>`;
+    }).join('');
+
+    return `<div class="hist-tabs">
+        ${tab('all','Tout',all.length)}
+        ${tab('created','Réservés',nCreated)}
+        ${tab('cancelled','Annulés',nCancel)}
+        ${tab('moved','Déplacés',nMoved)}
+      </div>
+      <button class="hist-refresh" data-act="histrefresh">↻ Actualiser</button>
+      ${list.length ? `<div class="hist-list">${rows}</div>`
+        : `<div class="hist-empty">${all.length ? 'Aucun évènement dans cette catégorie.' : "Aucun évènement pour le moment. L'historique se remplit à chaque réservation, annulation ou déplacement."}</div>`}`;
+  },
+  // "il y a 3 h", "hier à 14h", date complète au-delà — sur l'horloge de Paris
+  histWhen(at){
+    if (!at) return '';
+    const now = parisNow(), d = new Date(new Date(at).toLocaleString('en-US', { timeZone:'Europe/Paris' }));
+    const diff = Math.round((now - d) / 1000);
+    if (diff < 60) return 'à l\'instant';
+    if (diff < 3600) return 'il y a ' + Math.floor(diff/60) + ' min';
+    if (diff < 86400) return 'il y a ' + Math.floor(diff/3600) + ' h';
+    const j = pad(d.getDate()) + '/' + pad(d.getMonth()+1);
+    return 'le ' + j + ' à ' + pad(d.getHours()) + 'h' + pad(d.getMinutes());
+  },
   renderModifs(){
     if (!this.state.barberAuthed) return '<div class="empty">Accès réservé.</div>';
     if (!this.adminPw()){
@@ -2013,6 +2146,7 @@ const App = {
         service:sl.service || '', price:sl.price || '',
         date:key.slice(0, us), time:key.slice(us + 1), cancelled:true });
     }
+    if (sl && !sl.blocked) this.logHistory({ type:'cancelled', source:'barber', key, name:sl.name, service:sl.service, price:sl.price });
     const bookings = await this.fetchStore();
     this.set({ bookings });
   },
@@ -2072,6 +2206,7 @@ const App = {
     const ok = await this.putStore(key, { name, service:svc.name, serviceNo:svc.no, price:svc.price, ts:Date.now(), tok });
     if (!ok){ const after = await this.fetchStore(); this.set({ bookings:after, submitting:false, bkSlot:null, barberError:'Enregistrement impossible (créneau pris ?).' }); return; }
     if (phone) this.saveContact({ key, name, phone, email:'' });   // pour voir le tél dans le planning
+    this.logHistory({ type:'created', source:'barber', key, name, service:svc.name, price:svc.price });
     const bookings = await this.fetchStore();
     this.set({ bookings, submitting:false, barberPanel:null, barberDay:date,
       bkName:'', bkPhone:'', bkService:null, bkSlot:null, bkCustom:'', bkDate:'', barberError:'' });
@@ -2104,6 +2239,7 @@ const App = {
     }
     await this.delStore(oldKey);                            // libère l'ancienne heure
     await this.moveContact(oldKey, newKey);                 // le tél du client suit le créneau
+    this.logHistory({ type:'moved', source:'barber', key:newKey, oldKey, name:sl.name, service:sl.service, price:sl.price });
     const bookings = await this.fetchStore();
     await this.loadContacts();
     // on suit le rendez-vous s'il a changé de jour, sinon Giovany le croirait disparu
@@ -2621,6 +2757,11 @@ const App = {
       modifs.classList.toggle('open', this.state.modifsOpen);
       document.getElementById('modifsContent').innerHTML = this.state.modifsOpen ? this.renderModifs() : '';
     }
+    const histo = document.getElementById('historique');
+    if (histo){
+      histo.classList.toggle('open', this.state.historiqueOpen);
+      document.getElementById('historiqueContent').innerHTML = this.state.historiqueOpen ? this.renderHistorique() : '';
+    }
     const myrdv = document.getElementById('myrdv');
     if (myrdv){
       myrdv.classList.toggle('open', this.state.myRdvOpen);
@@ -2804,6 +2945,19 @@ try {
 /* lien "Planning" du menu */
 document.getElementById('navPlanning').addEventListener('click', (e) => { e.preventDefault(); App.openPlanning(); });
 document.getElementById('navModifs').addEventListener('click', (e) => { e.preventDefault(); App.openModifs(); });
+document.getElementById('navHistorique').addEventListener('click', (e) => { e.preventDefault(); App.openHistorique(); });
+
+/* délégation d'événements pour la page Historique */
+(() => {
+  const h = document.getElementById('historique');
+  h.addEventListener('click', (e) => {
+    const t = e.target.closest('[data-act]'); if (!t) return;
+    const act = t.dataset.act;
+    if (act === 'closehistorique') App.closeHistorique();
+    else if (act === 'histfilter') App.setHistoryFilter(t.dataset.f);
+    else if (act === 'histrefresh') App.loadHistory();
+  });
+})();
 
 /* délégation d'événements pour la page Modifications (CMS) */
 (() => {

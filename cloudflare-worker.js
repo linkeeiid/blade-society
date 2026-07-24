@@ -147,6 +147,42 @@ export default {
         const raw = await env.SUBS.get('contacts');
         return reply({ contacts: raw ? JSON.parse(raw) : {} }, 200, cors);
       }
+
+      /* ====== Historique des évènements (réservé au barber) ======
+         Chaque réservation / annulation / déplacement y laisse une trace horodatée,
+         avec sa PROVENANCE (client ou barber). Sans ce journal, un RDV annulé
+         disparaissait sans laisser de trace. Écriture ouverte (comme /contact),
+         lecture réservée au barber connecté. */
+      if (url.pathname === '/history/log' && req.method === 'POST') {
+        const b = await req.json();
+        const type = String((b && b.type) || '');
+        if (['created', 'cancelled', 'moved'].indexOf(type) < 0) return reply({ error: 'bad_type' }, 400, cors);
+        const cut = (k) => { const s = String(k || ''); const u = s.indexOf('_'); return u > 0 ? { date: s.slice(0, u), time: s.slice(u + 1) } : { date: '', time: '' }; };
+        const cur = cut(b.key), old = cut(b.oldKey);
+        const evt = {
+          at: Date.now(),
+          type,
+          source: (b.source === 'barber') ? 'barber' : 'client',
+          date: cur.date, time: cur.time,
+          name: String(b.name || '').slice(0, 60),
+          service: String(b.service || '').slice(0, 60),
+          price: String(b.price || '').slice(0, 20),
+          oldDate: old.date, oldTime: old.time,
+        };
+        const raw = await env.SUBS.get('history');
+        let arr = raw ? JSON.parse(raw) : [];
+        arr.push(evt);
+        if (arr.length > 1000) arr = arr.slice(arr.length - 1000);       // borne la taille du journal
+        await env.SUBS.put('history', JSON.stringify(arr));
+        return reply({ ok: true }, 200, cors);
+      }
+      if (url.pathname === '/history' && req.method === 'POST') {         // lecture (barber connecté)
+        const { pw } = await req.json();
+        const planningPw = env.PLANNING_PW || 'GiovanyBlade';
+        if (pw !== planningPw && pw !== env.BARBER_PW) return reply({ error: 'unauthorized' }, 401, cors);
+        const raw = await env.SUBS.get('history');
+        return reply({ history: raw ? JSON.parse(raw) : [] }, 200, cors);
+      }
       if (url.pathname === '/run-reminders' && req.method === 'POST') {  // déclenche les rappels à la main (test)
         const { pw } = await req.json();
         if (pw !== env.BARBER_PW) return reply({ error: 'unauthorized' }, 401, cors);
