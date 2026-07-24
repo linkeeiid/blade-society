@@ -497,6 +497,21 @@
   .aslot-edit .ae-acts{display:flex;gap:8px;margin-top:10px}
   .aslot-edit .ae-acts .submit{padding:13px;font-size:11px}
   .aslot-edit .ae-acts .ghost{padding:13px 18px;white-space:nowrap}
+  /* confirmation d'annulation (barber) */
+  .cfm-back{position:fixed;inset:0;z-index:400;display:flex;align-items:center;justify-content:center;
+    background:rgba(6,6,7,0.72);backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px);padding:24px}
+  .cfm-box{background:var(--panel);border:var(--bw) solid var(--line);border-radius:14px;
+    padding:26px 24px;max-width:360px;width:100%;text-align:center;box-shadow:0 30px 70px rgba(0,0,0,0.6)}
+  .cfm-title{font-family:var(--display);font-size:24px;text-transform:uppercase;color:var(--ink);margin-bottom:10px}
+  .cfm-sub{font-family:'Space Mono',monospace;font-size:13px;color:var(--chrome);color:var(--solid);margin-bottom:14px}
+  .cfm-note{font-family:'Space Mono',monospace;font-size:11.5px;line-height:1.7;color:var(--faint);margin:0 0 22px}
+  .cfm-acts{display:flex;gap:10px}
+  .cfm-acts button{flex:1;padding:15px 10px;border-radius:var(--radius);font-family:'Space Mono',monospace;
+    font-size:12px;letter-spacing:0.08em;text-transform:uppercase;cursor:pointer;transition:all .2s}
+  .cfm-no{background:none;border:var(--bw) solid var(--line);color:var(--ink)}
+  .cfm-no:hover{background:var(--ink);color:#0d0d0d}
+  .cfm-yes{background:#c75d5d;border:var(--bw) solid #c75d5d;color:#fff;font-weight:700}
+  .cfm-yes:hover{background:#b34a4a}
   .blegend{display:flex;flex-wrap:wrap;gap:10px 16px;margin-top:18px;padding-top:16px;border-top:var(--bw) solid var(--line);font-family:'Space Mono',monospace;font-size:10.5px;color:var(--mut)}
   .blegend span{display:flex;align-items:center;gap:7px}
   .blegend i{width:11px;height:11px;border-radius:2px;display:inline-block}
@@ -1200,7 +1215,7 @@ const App = {
     name:'', phone:'', email:'', error:'', submitting:false,
     otpStep:false, otpCode:'', otpError:'', otpTel:'', otpSentAt:0,
     bookings:{}, confirmed:null, myBookings:[], manage:null, reschedule:null, myRdvOpen:false,
-    editKey:null, editDate:'', editTime:'',
+    editKey:null, editDate:'', editTime:'', confirmCancel:null,
     barberOpen:false, barberPw:'', barberAuthed:false, barberError:'', barberDay:'', pushOn:false,
     barberCalY:0, barberCalM:0,
     adminPwInput:'', cmsUploading:false, cmsError:'', textEdit:null, textSaved:false, modifsOpen:false, planningOpen:false,
@@ -2501,7 +2516,26 @@ const App = {
         ${this.renderBarberPanel(s)}
         <button class="blogout" data-act="logout">Se déconnecter</button>`;
     }
-    return `<div class="barber-box">${inner}</div>`;
+    // fenêtre de confirmation d'annulation (centrée, pour éviter les annulations par mégarde)
+    let confirmHtml = '';
+    if (s.confirmCancel){
+      const sl = s.bookings[s.confirmCancel];
+      const us = s.confirmCancel.indexOf('_');
+      const day = s.confirmCancel.slice(0, us), time = s.confirmCancel.slice(us + 1);
+      const who = (sl && sl.name) ? sl.name : 'ce client';
+      confirmHtml = `<div class="cfm-back" data-act="confirmCancelNo">
+        <div class="cfm-box" onclick="event.stopPropagation()">
+          <div class="cfm-title">Annuler ce rendez-vous&nbsp;?</div>
+          <div class="cfm-sub">${esc(who)} — ${esc(this.labelOf(day))} à ${esc(frTime(time))}</div>
+          <p class="cfm-note">Le créneau sera libéré et le client prévenu par email. Cette action est définitive.</p>
+          <div class="cfm-acts">
+            <button class="cfm-no" data-act="confirmCancelNo">Non, garder</button>
+            <button class="cfm-yes" data-act="confirmCancelYes">Oui, annuler</button>
+          </div>
+        </div>
+      </div>`;
+    }
+    return `<div class="barber-box">${inner}</div>${confirmHtml}`;
   },
   renderBarberPanel(s){
     const bkDay = s.bkDate || s.barberDay;
@@ -2657,7 +2691,16 @@ function onResClick(e){
   else if (act === 'saveSchedule')  App.saveSchedule();
   else if (act === 'enablePush') App.enablePush();
   else if (act === 'logout')  App.barberLogout();
-  else if (act === 'cancel')  App.cancelBooking(t.dataset.key);
+  else if (act === 'cancel') {
+    // « Débloquer » un créneau bloqué : sans conséquence, on exécute directement.
+    // « Libérer » un vrai rendez-vous : on demande confirmation (Gio effaçait des RDV par
+    // mégarde d'un coup de doigt en faisant défiler le planning).
+    const k = t.dataset.key, sl = App.state.bookings[k];
+    if (sl && sl.blocked) App.cancelBooking(k);
+    else App.set({ confirmCancel: k });
+  }
+  else if (act === 'confirmCancelYes') { const k = App.state.confirmCancel; App.set({ confirmCancel: null }); if (k) App.cancelBooking(k); }
+  else if (act === 'confirmCancelNo')  App.set({ confirmCancel: null });
   else if (act === 'barberSubmit') App.barberSubmit();
 }
 function onResInput(e){
