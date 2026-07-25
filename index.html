@@ -1667,10 +1667,19 @@ const App = {
 
   /* ---------------- espace « Mes rendez-vous » (panneau latéral) ---------------- */
   // RDV encore à venir (et toujours actifs côté salon)
+  // un rendez-vous « en cours » du client doit correspondre à un créneau qui existe ENCORE
+  // dans Firebase ET porter le même jeton — sinon une entrée annulée « ressusciterait »
+  // si quelqu'un d'autre réservait le même créneau plus tard.
+  stillMine(b){
+    const cur = this.state.bookings[b.key];
+    if (!cur || cur.blocked) return false;
+    if (b.tok && cur.tok && cur.tok !== b.tok) return false;   // même créneau mais un autre client
+    return true;
+  },
   myUpcoming(){
     const iso = parisTodayIso(), nowMin = parisNowMin();
     return (this.state.myBookings || [])
-      .filter(b => this.state.bookings[b.key] && (b.date > iso || (b.date === iso && timeToMin(b.time) >= nowMin)))
+      .filter(b => this.stillMine(b) && (b.date > iso || (b.date === iso && timeToMin(b.time) >= nowMin)))
       .sort((a, z) => (a.date + a.time) < (z.date + z.time) ? -1 : 1);
   },
   // historique : on se fie au seul appareil du client (le créneau peut avoir été purgé côté salon)
@@ -2147,6 +2156,13 @@ const App = {
         date:key.slice(0, us), time:key.slice(us + 1), cancelled:true });
     }
     if (sl && !sl.blocked) this.logHistory({ type:'cancelled', source:'barber', key, name:sl.name, service:sl.service, price:sl.price });
+    // si ce créneau était aussi dans « Mes rendez-vous » de cet appareil (Gio est client + barber),
+    // on l'y retire pour qu'il ne reste pas affiché comme « en cours »
+    const mine = (this.state.myBookings || []).filter(x => x.key !== key);
+    if (mine.length !== (this.state.myBookings || []).length){
+      try { localStorage.setItem('bs_my_bookings', JSON.stringify(mine)); } catch(e){}
+      this.state.myBookings = mine;
+    }
     const bookings = await this.fetchStore();
     this.set({ bookings });
   },
