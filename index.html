@@ -1261,7 +1261,7 @@ const App = {
     adminPwInput:'', cmsUploading:false, cmsError:'', textEdit:null, textSaved:false, modifsOpen:false, planningOpen:false,
     historiqueOpen:false, history:null, historyLoading:false, historyFilter:'all',
     contacts:null, contactsAsk:false,
-    barberPanel:null, bkName:'', bkPhone:'', bkService:null, bkDate:'', bkSlot:null, bkCustom:'', periodFrom:'', periodTo:'', dayActionsOpen:false, scheduleEdit:null,
+    barberPanel:null, bkName:'', bkPhone:'', bkEmail:'', bkService:null, bkDate:'', bkSlot:null, bkCustom:'', periodFrom:'', periodTo:'', dayActionsOpen:false, scheduleEdit:null,
   },
   MONTHS_AHEAD: 12,   // nombre de mois consultables vers l'avenir
 
@@ -2196,11 +2196,12 @@ const App = {
     const bookings = await this.fetchStore();
     this.set({ bookings });
   },
-  // le barber crée lui-même une réservation (nom + prestation + tél)
+  // le barber crée lui-même une réservation (nom + prestation + tél + email facultatif)
   async barberBook(){
     const s = this.state;
     const name = (s.bkName || '').trim();
     const phone = (s.bkPhone || '').trim();
+    const email = (s.bkEmail || '').trim();
     const svc = SERVICES.find(x => x.no === s.bkService);
     const date = s.bkDate || s.barberDay;
     // une heure saisie à la main est prioritaire : elle permet d'ouvrir un créneau
@@ -2214,6 +2215,7 @@ const App = {
     if (!name){ this.set({ barberError:'Indiquez le nom du client.' }); return; }
     if (!svc){ this.set({ barberError:'Choisissez une prestation.' }); return; }
     if (!date || !slot){ this.set({ barberError:'Choisissez un jour et un créneau.' }); return; }
+    if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){ this.set({ barberError:'Adresse email invalide (ou laissez le champ vide).' }); return; }
     this.set({ submitting:true, barberError:'' });
     const key = date + '_' + slot;
     const fresh = await this.fetchStore();
@@ -2221,11 +2223,19 @@ const App = {
     const tok = Math.random().toString(36).slice(2, 10);
     const ok = await this.putStore(key, { name, service:svc.name, serviceNo:svc.no, price:svc.price, ts:Date.now(), tok });
     if (!ok){ const after = await this.fetchStore(); this.set({ bookings:after, submitting:false, bkSlot:null, barberError:'Enregistrement impossible (créneau pris ?).' }); return; }
-    if (phone) this.saveContact({ key, name, phone, email:'' });   // pour voir le tél dans le planning
+    // tél/email enregistrés (pour le planning + les notifications).
+    // Avec un email : le client reçoit la confirmation ET le rappel, comme une résa en ligne.
+    if (phone || email) await this.saveContact({ key, name, phone, email });
     this.logHistory({ type:'created', source:'barber', key, name, service:svc.name, price:svc.price });
+    if (email){
+      const us = key.indexOf('_');
+      this.emailClient({ name, email, phone, service:svc.name, price:svc.price,
+        date:key.slice(0, us), time:key.slice(us + 1), key, tok });
+      this.remindIfSoon({ key });               // rappel si le créneau est à moins de 24h
+    }
     const bookings = await this.fetchStore();
     this.set({ bookings, submitting:false, barberPanel:null, barberDay:date,
-      bkName:'', bkPhone:'', bkService:null, bkSlot:null, bkCustom:'', bkDate:'', barberError:'' });
+      bkName:'', bkPhone:'', bkEmail:'', bkService:null, bkSlot:null, bkCustom:'', bkDate:'', barberError:'' });
   },
   /* le barber change l'heure d'un RDV déjà pris, sans le ressaisir.
      Pas d'email au client : Giovany ne déplace qu'après s'être mis d'accord avec lui.
@@ -2726,6 +2736,7 @@ const App = {
         <div class="res-lab">// Nouvelle réservation</div>
         <input class="bfield" data-act="bkName" value="${esc(s.bkName)}" placeholder="NOM DU CLIENT">
         <input class="bfield" data-act="bkPhone" value="${esc(s.bkPhone)}" placeholder="TÉLÉPHONE (optionnel)" inputmode="tel">
+        <input class="bfield" data-act="bkEmail" value="${esc(s.bkEmail)}" placeholder="EMAIL (optionnel — pour la confirmation)" inputmode="email">
         <label class="blab">Prestation</label>
         <div class="bpresta">${SERVICES.map(sv => `<button class="bpresta-row${sv.no===s.bkService?' sel':''}" data-act="bkService" data-no="${esc(sv.no)}"><span>${esc(sv.name)}</span><span>${esc(sv.price)}</span></button>`).join('')}</div>
         <label class="blab">Jour</label>
@@ -2874,6 +2885,7 @@ function onResInput(e){
   else if (act === 'adminpw')  App.state.adminPwInput = t.value;
   else if (act === 'bkName')   App.state.bkName = t.value;
   else if (act === 'bkPhone')  App.state.bkPhone = t.value;
+  else if (act === 'bkEmail')  App.state.bkEmail = t.value;
   else if (act === 'bkCustom') App.state.bkCustom = t.value;
   else if (act === 'otpCode')  App.state.otpCode = t.value.replace(/\D/g, '').slice(0, 6);
   else if (act === 'editTime') App.state.editTime = t.value;
