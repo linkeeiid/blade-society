@@ -7,13 +7,13 @@
     <priority>1.0</priority>
   </url>
   <url>
-    <loc>https://bladesociety.fr/faq.html</loc>
+    <loc>https://bladesociety.fr/faq</loc>
     <lastmod>2026-07-22</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
-    <loc>https://bladesociety.fr/mentions-legales.html</loc>
+    <loc>https://bladesociety.fr/mentions-legales</loc>
     <lastmod>2026-07-22</lastmod>
     <changefreq>yearly</changefreq>
     <priority>0.3</priority>
