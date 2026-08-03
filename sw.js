@@ -17,14 +17,14 @@ self.addEventListener('push', (e) => {
     icon: 'assets/icon-192.png',
     badge: 'assets/icon-192.png',
     vibrate: [120, 60, 120],
-    data: { url: data.url || './index.html' },
+    data: { url: data.url || '/' },
   };
   e.waitUntil(self.registration.showNotification(title, options));
 });
 
 self.addEventListener('notificationclick', (e) => {
   e.notification.close();
-  const url = (e.notification.data && e.notification.data.url) || './index.html#planning';
+  const url = (e.notification.data && e.notification.data.url) || '/#planning';
   e.waitUntil((async () => {
     const all = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
     for (const c of all) {                      // app déjà ouverte -> on la focus + ouvre le planning

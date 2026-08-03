@@ -2143,7 +2143,7 @@ const App = {
     try {
       await fetch(CFG.PUSH_ENDPOINT.replace(/\/$/,'') + '/notify', {
         method:'POST', headers:{'Content-Type':'application/json'},
-        body: JSON.stringify({ title, body, url:'./index.html#planning' }),
+        body: JSON.stringify({ title, body, url:'/#planning' }),
       });
     } catch(e){}
   },

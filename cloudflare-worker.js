@@ -66,7 +66,7 @@ export default {
         const payload = JSON.stringify({
           title: title || 'Blade Society',
           body: body || 'Nouvelle réservation',
-          url: clickUrl || './index.html',
+          url: clickUrl || '/',
         });
         const res = await sendPush(sub, payload, env);
         if (res.status === 404 || res.status === 410) await env.SUBS.delete('barber'); // abonnement expiré
