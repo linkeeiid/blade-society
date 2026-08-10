@@ -28,11 +28,11 @@ Chaque séance dure 45 minutes.
 
 | Prestation | Détail | Prix |
 |---|---|---|
-| Barbe simple | Taille et contours à la demande | 14 € |
-| Coupe simple | Travail au ciseau, finitions nettes | 20 € |
-| Coupe + Bouc | Coupe et entretien du bouc | 23 € |
-| Coupe + Barbe (traçage) | Coupe et barbe, lignes tracées | 25 € |
-| Coupe + Barbe complète | Le rituel complet, rasage traditionnel | 28 € |
+| Barbe simple | Taille et contours à la demande | 15 € |
+| Coupe simple | Travail au ciseau, finitions nettes | 23 € |
+| Coupe + Bouc | Coupe et entretien du bouc | 25 € |
+| Coupe + Tracage Barbe | Coupe et barbe, lignes tracées | 27 € |
+| Coupe + Barbe complète | Le rituel complet, rasage traditionnel | 30 € |
 
 ## Spécialités
 
@@ -52,7 +52,7 @@ créneau réservé et un temps consacré entièrement à la prestation.
 
 **Quels sont les horaires ?** Du mardi au dimanche, 11h – 20h. Fermé le lundi.
 
-**Combien coûte une coupe ?** De 14 € pour la barbe seule à 28 € pour la coupe avec barbe complète et rasage traditionnel.
+**Combien coûte une coupe ?** De 15 € pour la barbe seule à 30 € pour la coupe avec barbe complète et rasage traditionnel.
 
 **Combien de temps dure un rendez-vous ?** 45 minutes, quelle que soit la prestation.
 

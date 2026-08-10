@@ -75,26 +75,26 @@
     "closes": "20:00"
   }],
   "makesOffer": [
-    { "@type": "Offer", "price": "14", "priceCurrency": "EUR", "availability": "https://schema.org/InStock",
+    { "@type": "Offer", "price": "15", "priceCurrency": "EUR", "availability": "https://schema.org/InStock",
       "itemOffered": { "@type": "Service", "name": "Barbe simple", "description": "Taille et contours à la demande — 45 min." } },
-    { "@type": "Offer", "price": "20", "priceCurrency": "EUR", "availability": "https://schema.org/InStock",
-      "itemOffered": { "@type": "Service", "name": "Coupe simple", "description": "Travail au ciseau, finitions nettes — 45 min." } },
     { "@type": "Offer", "price": "23", "priceCurrency": "EUR", "availability": "https://schema.org/InStock",
-      "itemOffered": { "@type": "Service", "name": "Coupe + Bouc", "description": "Coupe et entretien du bouc — 45 min." } },
+      "itemOffered": { "@type": "Service", "name": "Coupe simple", "description": "Travail au ciseau, finitions nettes — 45 min." } },
     { "@type": "Offer", "price": "25", "priceCurrency": "EUR", "availability": "https://schema.org/InStock",
-      "itemOffered": { "@type": "Service", "name": "Coupe + Barbe (traçage)", "description": "Coupe et barbe, lignes tracées — 45 min." } },
-    { "@type": "Offer", "price": "28", "priceCurrency": "EUR", "availability": "https://schema.org/InStock",
+      "itemOffered": { "@type": "Service", "name": "Coupe + Bouc", "description": "Coupe et entretien du bouc — 45 min." } },
+    { "@type": "Offer", "price": "27", "priceCurrency": "EUR", "availability": "https://schema.org/InStock",
+      "itemOffered": { "@type": "Service", "name": "Coupe + Tracage Barbe", "description": "Coupe et barbe, lignes tracées — 45 min." } },
+    { "@type": "Offer", "price": "30", "priceCurrency": "EUR", "availability": "https://schema.org/InStock",
       "itemOffered": { "@type": "Service", "name": "Coupe + Barbe complète", "description": "Le rituel complet avec rasage traditionnel — 45 min." } }
   ],
   "hasOfferCatalog": {
     "@type": "OfferCatalog",
     "name": "Prestations Blade Society",
     "itemListElement": [
-      { "@type": "Offer", "price": "14", "priceCurrency": "EUR", "itemOffered": { "@type": "Service", "name": "Barbe simple" } },
-      { "@type": "Offer", "price": "20", "priceCurrency": "EUR", "itemOffered": { "@type": "Service", "name": "Coupe simple" } },
-      { "@type": "Offer", "price": "23", "priceCurrency": "EUR", "itemOffered": { "@type": "Service", "name": "Coupe + Bouc" } },
-      { "@type": "Offer", "price": "25", "priceCurrency": "EUR", "itemOffered": { "@type": "Service", "name": "Coupe + Barbe (traçage)" } },
-      { "@type": "Offer", "price": "28", "priceCurrency": "EUR", "itemOffered": { "@type": "Service", "name": "Coupe + Barbe complète" } }
+      { "@type": "Offer", "price": "15", "priceCurrency": "EUR", "itemOffered": { "@type": "Service", "name": "Barbe simple" } },
+      { "@type": "Offer", "price": "23", "priceCurrency": "EUR", "itemOffered": { "@type": "Service", "name": "Coupe simple" } },
+      { "@type": "Offer", "price": "25", "priceCurrency": "EUR", "itemOffered": { "@type": "Service", "name": "Coupe + Bouc" } },
+      { "@type": "Offer", "price": "27", "priceCurrency": "EUR", "itemOffered": { "@type": "Service", "name": "Coupe + Tracage Barbe" } },
+      { "@type": "Offer", "price": "30", "priceCurrency": "EUR", "itemOffered": { "@type": "Service", "name": "Coupe + Barbe complète" } }
     ]
   },
   "knowsAbout": ["Dégradé", "Burst fade", "Taper fade", "Mullet", "Rasage traditionnel", "Travail au ciseau"],
@@ -712,11 +712,11 @@
     <!-- Version HTML statique de la carte : lisible par Google et par les moteurs IA,
          qui n'exécutent pas le JavaScript. renderMenu() la remplace au chargement. -->
     <div class="menu" id="menu">
-      <button class="srv" data-book="01" aria-label="Réserver : Barbe simple"><span class="no">01</span><div style="min-width:0"><div class="name">Barbe simple</div><div class="desc">Taille &amp; contours à la demande</div></div><span class="price">14€</span></button>
-      <button class="srv" data-book="02" aria-label="Réserver : Coupe simple"><span class="no">02</span><div style="min-width:0"><div class="name">Coupe simple</div><div class="desc">Travail au ciseau, finitions nettes</div></div><span class="price">20€</span></button>
-      <button class="srv" data-book="03" aria-label="Réserver : Coupe + Bouc"><span class="no">03</span><div style="min-width:0"><div class="name">Coupe + Bouc</div><div class="desc">Coupe + entretien du bouc</div></div><span class="price">23€</span></button>
-      <button class="srv" data-book="04" aria-label="Réserver : Coupe + Barbe — traçage"><span class="no">04</span><div style="min-width:0"><div class="name">Coupe + Barbe — traçage</div><div class="desc">Coupe + barbe, lignes tracées</div></div><span class="price">25€</span></button>
-      <button class="srv" data-book="05" aria-label="Réserver : Coupe + Barbe complète"><span class="no">05</span><div style="min-width:0"><div class="name">Coupe + Barbe complète</div><div class="desc">Le rituel complet, rasage traditionnel</div></div><span class="price">28€</span></button>
+      <button class="srv" data-book="01" aria-label="Réserver : Barbe simple"><span class="no">01</span><div style="min-width:0"><div class="name">Barbe simple</div><div class="desc">Taille &amp; contours à la demande</div></div><span class="price">15€</span></button>
+      <button class="srv" data-book="02" aria-label="Réserver : Coupe simple"><span class="no">02</span><div style="min-width:0"><div class="name">Coupe simple</div><div class="desc">Travail au ciseau, finitions nettes</div></div><span class="price">23€</span></button>
+      <button class="srv" data-book="03" aria-label="Réserver : Coupe + Bouc"><span class="no">03</span><div style="min-width:0"><div class="name">Coupe + Bouc</div><div class="desc">Coupe + entretien du bouc</div></div><span class="price">25€</span></button>
+      <button class="srv" data-book="04" aria-label="Réserver : Coupe + Tracage Barbe"><span class="no">04</span><div style="min-width:0"><div class="name">Coupe + Tracage Barbe</div><div class="desc">Coupe + barbe, lignes tracées</div></div><span class="price">27€</span></button>
+      <button class="srv" data-book="05" aria-label="Réserver : Coupe + Barbe complète"><span class="no">05</span><div style="min-width:0"><div class="name">Coupe + Barbe complète</div><div class="desc">Le rituel complet, rasage traditionnel</div></div><span class="price">30€</span></button>
     </div>
     <div style="margin-top:16px;font-family:'Space Mono',monospace;font-size:11px;color:var(--faint)">// Cliquez une prestation pour la réserver →</div>
     <div style="margin-top:clamp(40px,6vw,60px)">
@@ -996,11 +996,15 @@ const urlB64ToU8 = (s) => {                       // clé VAPID base64url -> Uin
 };
 
 const SERVICES = [
-  { no:'01', name:'Barbe simple',                desc:'Taille & contours à la demande',          duration:'45 min', price:'14€' },
-  { no:'02', name:'Coupe simple',                desc:'Travail au ciseau, finitions nettes',     duration:'45 min', price:'20€' },
-  { no:'03', name:'Coupe + Bouc',                desc:'Coupe + entretien du bouc',               duration:'45 min', price:'23€' },
-  { no:'04', name:'Coupe + Barbe — traçage',     desc:'Coupe + barbe, lignes tracées',           duration:'45 min', price:'25€' },
-  { no:'05', name:'Coupe + Barbe complète',      desc:'Le rituel complet, rasage traditionnel',  duration:'45 min', price:'28€' },
+  /* Valeurs par défaut = celles du back-office de Giovany au 10/08/2026.
+     Elles sont écrasées par le CMS (loadContent) dès que le Worker répond ;
+     elles ne servent que si le Worker est injoignable. À resynchroniser
+     en même temps que les données structurées si Giovany change ses tarifs. */
+  { no:'01', name:'Barbe simple',                desc:'Taille & contours à la demande',          duration:'45 min', price:'15€' },
+  { no:'02', name:'Coupe simple',                desc:'Travail au ciseau, finitions nettes',     duration:'45 min', price:'23€' },
+  { no:'03', name:'Coupe + Bouc',                desc:'Coupe + entretien du bouc',               duration:'45 min', price:'25€' },
+  { no:'04', name:'Coupe + Tracage Barbe',       desc:'Coupe + barbe, lignes tracées',           duration:'45 min', price:'27€' },
+  { no:'05', name:'Coupe + Barbe complète',      desc:'Le rituel complet, rasage traditionnel',  duration:'45 min', price:'30€' },
 ];
 // une couleur par prestation (planning barber)
 const SERVICE_COLORS = { '01':'#6aa3e0', '02':'#5fcf8a', '03':'#e0b15f', '04':'#b48fe0', '05':'#e0808f' };
