@@ -1,4 +1,50 @@
+# robots.txt — Blade Society
+# https://bladesociety.fr
+
 User-agent: *
 Allow: /
+
+# ── Moteurs de réponse / IA : autorisés explicitement ──
+# (les bloquer empêcherait ChatGPT, Perplexity, Claude ou Gemini de citer le barbershop)
+User-agent: GPTBot
+Allow: /
+
+User-agent: ChatGPT-User
+Allow: /
+
+User-agent: OAI-SearchBot
+Allow: /
+
+User-agent: PerplexityBot
+Allow: /
+
+User-agent: Perplexity-User
+Allow: /
+
+User-agent: ClaudeBot
+Allow: /
+
+User-agent: Claude-User
+Allow: /
+
+User-agent: anthropic-ai
+Allow: /
+
+User-agent: Google-Extended
+Allow: /
+
+User-agent: Applebot
+Allow: /
+
+User-agent: Bingbot
+Allow: /
+
+User-agent: Amazonbot
+Allow: /
+
+# ── Pages de travail internes : hors index ──
+User-agent: *
+Disallow: /apercu-telephone
+Disallow: /apercu-telephone.html
 
 Sitemap: https://bladesociety.fr/sitemap.xml
