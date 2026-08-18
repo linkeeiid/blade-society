@@ -183,6 +183,39 @@ export default {
         const raw = await env.SUBS.get('history');
         return reply({ history: raw ? JSON.parse(raw) : [] }, 200, cors);
       }
+      /* ====== Contrôle santé : solde SMS + quota email Brevo (réservé au barber) ======
+         Interroge l'API Brevo (GET /v3/account) pour connaître les crédits restants,
+         sans avoir à se connecter au tableau de bord. */
+      if (url.pathname === '/health' && req.method === 'POST') {
+        const { pw } = await req.json();
+        const planningPw = env.PLANNING_PW || 'GiovanyBlade';
+        if (pw !== planningPw && pw !== env.BARBER_PW) return reply({ error: 'unauthorized' }, 401, cors);
+        if (!env.BREVO_API_KEY) return reply({ error: 'no_api_key' }, 503, cors);
+        try {
+          const r = await fetch('https://api.brevo.com/v3/account', {
+            headers: { 'api-key': env.BREVO_API_KEY, 'accept': 'application/json' },
+          });
+          if (!r.ok) return reply({ error: 'brevo_status', status: r.status }, 502, cors);
+          const acc = await r.json();
+          const plan = Array.isArray(acc.plan) ? acc.plan : [];
+          let smsCredits = null, emailCredits = null;
+          for (const p of plan) {
+            const type = String(p.type || '').toLowerCase();
+            const ct = String(p.creditsType || '').toLowerCase();
+            if (type.indexOf('sms') >= 0 || ct.indexOf('sms') >= 0) smsCredits = p.credits;
+            else if (ct.indexOf('sendlimit') >= 0 || type.indexOf('free') >= 0 || type.indexOf('payasyougo') >= 0) emailCredits = p.credits;
+          }
+          return reply({
+            ok: true,
+            account_email: acc.email || '',
+            sms_config: !!env.SMS_SENDER,
+            sms_sender: env.SMS_SENDER || '(non défini)',
+            sms_credits: smsCredits,
+            email_credits: emailCredits,
+            plan,
+          }, 200, cors);
+        } catch (e) { return reply({ error: 'brevo_failed' }, 502, cors); }
+      }
       if (url.pathname === '/run-reminders' && req.method === 'POST') {  // déclenche les rappels à la main (test)
         const { pw } = await req.json();
         if (pw !== env.BARBER_PW) return reply({ error: 'unauthorized' }, 401, cors);
