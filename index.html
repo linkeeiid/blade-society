@@ -476,6 +476,7 @@
   .bday button:last-child{border-left:var(--bw) solid var(--line)}
   .bday button:hover{background:var(--ink);color:#0d0d0d}
   .bsub{font-family:'Space Mono',monospace;font-size:11px;letter-spacing:0.08em;text-transform:uppercase;color:var(--faint);margin-bottom:14px}
+  .bsub .brev{color:#5fcf8a;font-weight:700}   /* chiffre d'affaires de la journée */
   .bday-acts{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px}
   .bday-acts button{flex:1;min-width:160px;background:none;border:var(--bw) solid var(--line);color:var(--ink);padding:11px 14px;border-radius:var(--radius);font-family:'Space Mono',monospace;font-size:10.5px;letter-spacing:0.08em;text-transform:uppercase;cursor:pointer;transition:all .25s}
   .bday-acts button:hover{background:var(--ink);color:#0d0d0d}
@@ -2680,6 +2681,15 @@ const App = {
 
       const sched = slotsForDate(day);
       const count = agendaSlots(day, s.bookings).filter(t => { const x = s.bookings[day + '_' + t]; return x && !x.blocked; }).length;
+      // chiffre d'affaires de la journée = somme des prix des RDV (on ignore les créneaux bloqués)
+      const dayRevenue = agendaSlots(day, s.bookings).reduce((sum, t) => {
+        const x = s.bookings[day + '_' + t];
+        if (!x || x.blocked) return sum;
+        const m = String(x.price || '').match(/\d[\d\s.,]*/);   // extrait le montant de "30€", "20 EUR"…
+        const n = m ? parseFloat(m[0].replace(/\s/g, '').replace(',', '.')) : 0;
+        return sum + (isNaN(n) ? 0 : n);
+      }, 0);
+      const revStr = (dayRevenue % 1 === 0) ? String(dayRevenue) : dayRevenue.toFixed(2);
       const freeCount = sched.filter(t => !s.bookings[day + '_' + t]).length;
       const freeAm = sched.filter(t => parseInt(t, 10) < 14 && !s.bookings[day + '_' + t]).length;
       const freePm = sched.filter(t => parseInt(t, 10) >= 14 && !s.bookings[day + '_' + t]).length;
@@ -2700,7 +2710,7 @@ const App = {
           <button class="lbl" data-act="dayactions">${esc(this.labelOf(day))} <span class="chev">${s.dayActionsOpen?'▴':'▾'}</span></button>
           <button data-act="bnext" aria-label="Jour suivant">›</button>
         </div>
-        <div class="bsub">${count} rendez-vous · séances de 45 min · <span class="bday-hint" data-act="dayactions">gérer la journée</span></div>
+        <div class="bsub">${count} rendez-vous${count ? ` · <span class="brev">${revStr}&nbsp;€</span>` : ''} · séances de 45 min · <span class="bday-hint" data-act="dayactions">gérer la journée</span></div>
         ${s.dayActionsOpen ? `<div class="bday-acts">
           ${freeAm ? `<button data-act="blockam">Bloquer la matinée</button>` : ''}
           ${freePm ? `<button data-act="blockpm">Bloquer l'après-midi</button>` : ''}
