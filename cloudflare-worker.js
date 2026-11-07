@@ -419,11 +419,16 @@ function nowLeft(ts) {
 }
 /* Lien court pour le SMS : bladesociety.fr/?r=XXXXXXX
    Le lien de gestion complet fait ~96 caractères — il ferait exploser la taille du message.
-   Le code donne accès au rendez-vous (même principe que le lien reçu par email) et expire. */
+   Le code donne accès au rendez-vous (même principe que le lien reçu par email) et expire.
+   Le code est STABLE pour un rendez-vous (empreinte du créneau + jeton + téléphone) et n'est
+   écrit qu'une fois : si le SMS échoue, le Cron réessaie toutes les 10 min — avec un code
+   aléatoire, chaque essai faisait une écriture KV et épuisait le quota de 1 000/jour. */
 async function shortManageLink(key, slot, contact, env) {
   try {
-    const code = b64uEnc(crypto.getRandomValues(new Uint8Array(6))).slice(0, 7);
-    await env.SUBS.put('lnk:' + code, JSON.stringify({
+    const seed = key + '|' + ((slot && slot.tok) || '') + '|' + ((contact && contact.phone) || '');
+    const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(seed));
+    const code = b64uEnc(new Uint8Array(digest).slice(0, 6)).slice(0, 7);
+    if (!(await env.SUBS.get('lnk:' + code))) await env.SUBS.put('lnk:' + code, JSON.stringify({
       key, tok: (slot && slot.tok) || '',
       email: (contact && contact.email) || '', phone: (contact && contact.phone) || '',
     }), { expirationTtl: LINK_TTL_S });
@@ -435,14 +440,18 @@ async function shortManageLink(key, slot, contact, env) {
 /* Texte du rappel client.
    ATTENTION : pas d'emoji ni de « ô/ê/â/À » — ces caractères font basculer le SMS en
    encodage Unicode (70 caractères par SMS au lieu de 160) et TRIPLENT la facture.
-   « é » et « à » sont en revanche acceptés par l'encodage standard. */
+   « é », « è » et « à » sont en revanche acceptés par l'encodage standard.
+   Avec l'accès au salon + le numéro de Giovany (demande du 06/11/2026), le message fait
+   ~240 caractères = 2 SMS facturés par rappel au lieu d'un. */
 function reminderSms(date, time, todayIso, link) {
   const d = date.split('-');
   const quand = (date === todayIso) ? "aujourd'hui" : 'demain';
   return 'Blade Society\n\n'
     + 'Rappel : votre rendez-vous est prévu ' + quand + ' ' + d[2] + '/' + d[1] + ' à ' + frTimeFR(time) + '.\n\n'
     + (link ? 'Modifier ou annuler : ' + link : 'Modifier ou annuler : le lien est dans votre email.') + '\n\n'
-    + 'A bientot !';
+    + 'Accès : Interphone Blade Society, batiment A, étage 3, 2ème bureau à droite\n\n'   // « batiment » sans â (voir plus haut)
+    + 'A bientot !\n'
+    + '06 44 16 44 99';
 }
 // minutes restantes avant un créneau "aaaa-mm-jj_hh:mm", vues de Paris
 function minutesUntil(key, now) {

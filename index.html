@@ -539,6 +539,11 @@
   .aslot button:hover{border-color:var(--ink);color:var(--ink)}
   .aslot:not(.is-free):not(.is-blocked) button:hover{border-color:#e0846f;color:#e0846f}
   /* changer l'heure d'un RDV existant */
+  /* pauses du jour (trous entre les plages horaires) */
+  .apause{display:grid;grid-template-columns:50px 18px 1fr;align-items:center;gap:12px;padding:8px 4px;border-bottom:var(--bw) solid var(--line);color:var(--faint)}
+  .apause .t{font-family:'Space Mono',monospace;font-size:11px}
+  .apause .ic{font-size:13px;text-align:center}
+  .apause .pl{font-family:'Space Mono',monospace;font-size:11px;letter-spacing:0.04em}
   .aslot-acts{display:flex;gap:6px;justify-content:flex-end}
   .aslot .a-edit{padding:7px 9px;font-size:12px;line-height:1}
   .aslot:not(.is-free):not(.is-blocked) .a-edit:hover{border-color:var(--ink);color:var(--ink)}
@@ -902,15 +907,18 @@ const RL_MAX = 3, RL_WINDOW_MIN = 15;              // max 3 réservations / 15 m
 // Créneaux de 45 min, 10h → 20h (la pause est gérée par Giovany via « Bloquer »)
 const TIMES  = ['11:00','11:45','12:30','13:15','14:00','14:45','15:30','16:15','17:00','17:45','18:30','19:15'];
 const SLOT_MIN = 45;                       // durée d'un créneau (min)
-// horaires par jour de la semaine (0=Dim … 6=Sam). Défaut : lundi fermé, sinon 11h-20h.
+// horaires par jour de la semaine (0=Dim … 6=Sam). Défaut : lundi fermé, sinon 9h30-19h00.
+// Les trous entre deux plages = pauses (15 min à 11h45 et 16h30, déjeuner 45 min à 13h30) :
+// aucun créneau n'y est proposé et le planning du barbier les affiche.
+const DAY_RANGES = [['09:30','11:45'],['12:00','13:30'],['14:15','16:30'],['16:45','19:00']];
 const DEFAULT_SCHEDULE = {
-  0: { open:true,  ranges:[['11:00','20:00']] },
+  0: { open:true,  ranges:DAY_RANGES },
   1: { open:false, ranges:[] },
-  2: { open:true,  ranges:[['11:00','20:00']] },
-  3: { open:true,  ranges:[['11:00','20:00']] },
-  4: { open:true,  ranges:[['11:00','20:00']] },
-  5: { open:true,  ranges:[['11:00','20:00']] },
-  6: { open:true,  ranges:[['11:00','20:00']] },
+  2: { open:true,  ranges:DAY_RANGES },
+  3: { open:true,  ranges:DAY_RANGES },
+  4: { open:true,  ranges:DAY_RANGES },
+  5: { open:true,  ranges:DAY_RANGES },
+  6: { open:true,  ranges:DAY_RANGES },
 };
 const timeToMin = (t) => { const p = String(t).split(':'); return (+p[0]) * 60 + (+p[1] || 0); };
 const minToTime = (m) => pad(Math.floor(m/60)) + ':' + pad(m % 60);
@@ -934,6 +942,28 @@ function agendaSlots(iso, bookings){
   const booked = Object.keys(bookings || {}).filter(k => k.indexOf(pre) === 0).map(k => k.slice(pre.length));
   return Array.from(new Set(slotsForDate(iso).concat(booked))).sort();
 }
+// pauses du jour = trous entre deux plages horaires -> [{t:'HH:MM', min:15}]
+function pausesForDate(iso){
+  if (!iso) return [];
+  const cfg = getSchedule()[new Date(iso + 'T00:00:00').getDay()];
+  if (!cfg || !cfg.open || !Array.isArray(cfg.ranges)) return [];
+  const rs = cfg.ranges.filter(r => r && r.length >= 2).map(r => [timeToMin(r[0]), timeToMin(r[1])]).sort((a, b) => a[0] - b[0]);
+  const out = [];
+  for (let i = 1; i < rs.length; i++){ const gap = rs[i][0] - rs[i-1][1]; if (gap > 0) out.push({ t: minToTime(rs[i-1][1]), min: gap }); }
+  return out;
+}
+// créneau déjà pris, ou qui chevaucherait un RDV/blocage existant à une autre heure
+// (ex. RDV pris à 11h45 sur l'ancienne grille -> le créneau de 12h00 n'est pas proposé)
+function overlapOf(iso, t, bookings){
+  const pre = iso + '_', m = timeToMin(t);
+  for (const k in (bookings || {})){
+    if (k.indexOf(pre) !== 0 || !bookings[k]) continue;
+    const u = k.slice(pre.length);
+    if (u !== t && Math.abs(timeToMin(u) - m) < SLOT_MIN) return u;
+  }
+  return null;
+}
+const slotTaken = (iso, t, bookings) => !!(bookings && bookings[iso + '_' + t]) || !!overlapOf(iso, t, bookings);
 const slotEnd = (t) => { let [h,m] = t.split(':').map(Number); m += 45; if (m >= 60){ h++; m -= 60; } return pad(h)+':'+pad(m); };
 const frTime = (t) => { const p = String(t).split(':'); return p[0] + 'h' + p[1]; };  // 11:00 -> 11h00, 11:45 -> 11h45
 
@@ -1568,7 +1598,7 @@ const App = {
     this.set({ submitting:true, error:'', otpStep:false });
     const key = this.state.selectedDate + '_' + this.state.selectedSlot;
     const fresh = await this.fetchStore();
-    if (fresh[key]){
+    if (slotTaken(this.state.selectedDate, this.state.selectedSlot, fresh)){
       this.set({ bookings:fresh, submitting:false, selectedSlot:null, error:'Désolé, ce créneau vient d’être réservé. Choisissez-en un autre.' });
       return;
     }
@@ -1800,7 +1830,8 @@ const App = {
     if (newKey === r.oldKey){ this.set({ error:'C’est déjà votre créneau actuel. Choisissez-en un autre.' }); return; }
     this.set({ submitting:true, error:'' });
     const fresh = await this.fetchStore();
-    if (fresh[newKey]){ this.set({ bookings:fresh, submitting:false, selectedSlot:null, error:'Ce créneau vient d’être pris. Choisissez-en un autre.' }); return; }
+    const others = Object.assign({}, fresh); delete others[r.oldKey];   // son propre RDV ne bloque pas un léger décalage
+    if (slotTaken(this.state.selectedDate, this.state.selectedSlot, others)){ this.set({ bookings:fresh, submitting:false, selectedSlot:null, error:'Ce créneau vient d’être pris. Choisissez-en un autre.' }); return; }
     // le créneau ACTUEL dans Firebase est la source de vérité pour le nom / la prestation :
     // on en hérite plutôt que de se fier aux données locales de l'appareil, qui peuvent être
     // incomplètes (RDV pris avant la mise à jour, ou ouvert depuis l'app) — sinon le nom
@@ -2214,7 +2245,7 @@ const App = {
   async blockRange(part){
     const day = this.state.barberDay; if (!day) return;
     const free = slotsForDate(day).filter(t => {
-      if (this.state.bookings[day + '_' + t]) return false;
+      if (slotTaken(day, t, this.state.bookings)) return false;
       if (part === 'am') return parseInt(t, 10) < 14;
       if (part === 'pm') return parseInt(t, 10) >= 14;
       return true;
@@ -2321,7 +2352,7 @@ const App = {
     while (d <= end){
       const iso = isoOf(d);
       if (this.isOpenDay(d)){
-        for (const t of slotsForDate(iso)){ const key = iso + '_' + t; if (!this.state.bookings[key]) puts.push(this.putStore(key, { name:'', service:'Bloqué', serviceNo:'X', blocked:true, ts:Date.now() })); }
+        for (const t of slotsForDate(iso)){ const key = iso + '_' + t; if (!slotTaken(iso, t, this.state.bookings)) puts.push(this.putStore(key, { name:'', service:'Bloqué', serviceNo:'X', blocked:true, ts:Date.now() })); }
       }
       d.setDate(d.getDate() + 1);
     }
@@ -2493,7 +2524,7 @@ const App = {
       const iso = isoOf(dt);
       const sd = slotsForDate(iso);
       // grisée si tout est pris/bloqué, ou si tous les créneaux restants sont déjà passés
-      const left = sd.filter(t => !s.bookings[iso + '_' + t] && slotStillOpen(iso, t));
+      const left = sd.filter(t => !slotTaken(iso, t, s.bookings) && slotStillOpen(iso, t));
       const off = dt < today || !this.isOpenDay(dt) || (sd.length > 0 && left.length === 0);
       const cls = 'cal-cell'
         + (off ? ' off' : '')
@@ -2521,8 +2552,10 @@ const App = {
 
     // le client ne voit QUE les créneaux libres et pas encore passés
     // (réservés, bloqués ou dont l'heure est dépassée : simplement masqués)
+    // en déplacement, l'ancien RDV du client ne masque pas les créneaux voisins
+    const bkOthers = s.reschedule ? Object.assign({}, s.bookings, { [s.reschedule.oldKey]: undefined }) : s.bookings;
     const freeSlots = s.selectedDate
-      ? slotsForDate(s.selectedDate).filter(t => !s.bookings[s.selectedDate + '_' + t] && slotStillOpen(s.selectedDate, t))
+      ? slotsForDate(s.selectedDate).filter(t => !slotTaken(s.selectedDate, t, bkOthers) && slotStillOpen(s.selectedDate, t))
       : [];
     const slotsHtml = !s.selectedDate
       ? `<div class="no-slot">Choisissez une date ci-dessus.</div>`
@@ -2635,7 +2668,16 @@ const App = {
       </div>`;
     } else {
       const day = s.barberDay;
-      const rows = agendaSlots(day, s.bookings).map(t => {
+      const slotRows = agendaSlots(day, s.bookings).map(t => ({ t, html: slotRow(t) }));
+      // pauses du jour (trous entre les plages horaires), intercalées à leur heure
+      const pauseRows = pausesForDate(day).map(p => ({ t: p.t, pause: 1, html: `<div class="apause">
+          <span class="t">${frTime(p.t)}</span><span class="ic">${p.min >= 30 ? '🍴' : '☕'}</span>
+          <span class="pl">${p.min >= 30 ? 'Déjeuner' : 'Pause'} ${p.min} min</span>
+        </div>` }));
+      const rows = slotRows.concat(pauseRows)
+        .sort((a, b) => a.t < b.t ? -1 : a.t > b.t ? 1 : (a.pause || 0) - (b.pause || 0))
+        .map(r => r.html).join('');
+      function slotRow(t){
         const key = day + '_' + t;
         const sl = s.bookings[key];
         if (sl && sl.blocked){
@@ -2672,12 +2714,17 @@ const App = {
             </div>
           </div>` : '');
         }
+        const ov = overlapOf(day, t, s.bookings);
+        if (ov) return `<div class="aslot is-free">
+          <span class="t">${frTime(t)}</span><span class="bar"></span>
+          <div class="info"><div class="sv">Pris (chevauche ${frTime(ov)})</div></div>
+        </div>`;
         return `<div class="aslot is-free">
           <span class="t">${frTime(t)}</span><span class="bar"></span>
           <div class="info"><div class="sv">Libre</div></div>
           <button data-act="block" data-key="${esc(key)}">Bloquer</button>
         </div>`;
-      }).join('');
+      }
 
       const sched = slotsForDate(day);
       const count = agendaSlots(day, s.bookings).filter(t => { const x = s.bookings[day + '_' + t]; return x && !x.blocked; }).length;
@@ -2690,9 +2737,9 @@ const App = {
         return sum + (isNaN(n) ? 0 : n);
       }, 0);
       const revStr = (dayRevenue % 1 === 0) ? String(dayRevenue) : dayRevenue.toFixed(2);
-      const freeCount = sched.filter(t => !s.bookings[day + '_' + t]).length;
-      const freeAm = sched.filter(t => parseInt(t, 10) < 14 && !s.bookings[day + '_' + t]).length;
-      const freePm = sched.filter(t => parseInt(t, 10) >= 14 && !s.bookings[day + '_' + t]).length;
+      const freeCount = sched.filter(t => !slotTaken(day, t, s.bookings)).length;
+      const freeAm = sched.filter(t => parseInt(t, 10) < 14 && !slotTaken(day, t, s.bookings)).length;
+      const freePm = sched.filter(t => parseInt(t, 10) >= 14 && !slotTaken(day, t, s.bookings)).length;
       const blockedCount = agendaSlots(day, s.bookings).filter(t => { const x = s.bookings[day + '_' + t]; return x && x.blocked; }).length;
       const legend = SERVICES.map(sv => `<span><i style="background:${SERVICE_COLORS[sv.no]}"></i>${esc(sv.name)}</span>`).join('');
 
@@ -2750,7 +2797,7 @@ const App = {
   },
   renderBarberPanel(s){
     const bkDay = s.bkDate || s.barberDay;
-    const bkFree = slotsForDate(bkDay).filter(t => !s.bookings[bkDay + '_' + t]);
+    const bkFree = slotsForDate(bkDay).filter(t => !slotTaken(bkDay, t, s.bookings));
     if (s.barberPanel === 'settings'){
       const sc = s.scheduleEdit || getSchedule();
       const DNAME = {1:'Lundi',2:'Mardi',3:'Mercredi',4:'Jeudi',5:'Vendredi',6:'Samedi',0:'Dimanche'};
