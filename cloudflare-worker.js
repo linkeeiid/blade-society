@@ -216,6 +216,28 @@ export default {
           }, 200, cors);
         } catch (e) { return reply({ error: 'brevo_failed' }, 502, cors); }
       }
+      /* Diagnostic SMS : derniers évènements Brevo (envoyé / délivré / rejeté…) avec la raison.
+         Lecture seule, réservée au barbier. Numéros masqués sauf les 4 derniers chiffres. */
+      if (url.pathname === '/sms-status' && req.method === 'POST') {
+        const { pw, days } = await req.json();
+        const planningPw = env.PLANNING_PW || 'GiovanyBlade';
+        if (pw !== planningPw && pw !== env.BARBER_PW) return reply({ error: 'unauthorized' }, 401, cors);
+        if (!env.BREVO_API_KEY) return reply({ error: 'no_api_key' }, 503, cors);
+        try {
+          const d = Math.min(Math.max(parseInt(days, 10) || 7, 1), 90);
+          const r = await fetch('https://api.brevo.com/v3/transactionalSMS/statistics/events?limit=50&sort=desc&days=' + d, {
+            headers: { 'api-key': env.BREVO_API_KEY, 'accept': 'application/json' },
+          });
+          const txt = await r.text();
+          if (!r.ok) return reply({ error: 'brevo_status', status: r.status, detail: txt.slice(0, 300) }, 502, cors);
+          const j = JSON.parse(txt || '{}');
+          const events = (j.events || []).map(e => ({
+            date: e.date, event: e.event, reason: e.reason || '', tag: e.tag || '',
+            phone: '…' + String(e.phoneNumber || '').slice(-4),
+          }));
+          return reply({ ok: true, sender: env.SMS_SENDER || '(non défini)', count: events.length, events }, 200, cors);
+        } catch (e) { return reply({ error: 'brevo_failed', detail: String(e).slice(0, 200) }, 502, cors); }
+      }
       if (url.pathname === '/run-reminders' && req.method === 'POST') {  // déclenche les rappels à la main (test)
         const { pw } = await req.json();
         if (pw !== env.BARBER_PW) return reply({ error: 'unauthorized' }, 401, cors);
@@ -293,7 +315,7 @@ export default {
         const link = await shortManageLink(key, slot, c, env);
         const r2 = await sendBrevoSms(c.phone, reminderSms(key.slice(0, us), key.slice(us + 1), now.date, link), env);
         if (r2.ok) { reminded24[key] = true; await env.SUBS.put('reminded24', JSON.stringify(reminded24)); }
-        return reply({ ok: r2.ok, sent: r2.ok }, 200, cors);
+        return reply({ ok: r2.ok, sent: r2.ok, status: r2.status, detail: r2.detail }, 200, cors);
       }
 
       /* ====== Vérification du numéro par SMS : envoi du code ======
@@ -333,7 +355,7 @@ export default {
           + (slotTxt ? 'RDV du ' + slotTxt + '\n' : '')
           + 'Valable 10 minutes.';
         const r = await sendBrevoSms(to, content, env);
-        if (!r.ok) return reply({ error: 'sms_failed', status: r.status }, 502, cors);
+        if (!r.ok) return reply({ error: 'sms_failed', status: r.status, detail: r.detail }, 502, cors);
         await env.SUBS.put('otp:' + to, JSON.stringify({ code, ts: nowSec, tries: 0 }), { expirationTtl: OTP_TTL_S });
         await env.SUBS.put('otprl:' + to, String(nPhone + 1), { expirationTtl: 3600 });
         await env.SUBS.put('otpip:' + ip, String(nIp + 1), { expirationTtl: 3600 });
@@ -410,8 +432,10 @@ async function sendBrevoSms(phone, content, env) {
       headers: { 'api-key': env.BREVO_API_KEY, 'Content-Type': 'application/json', 'accept': 'application/json' },
       body: JSON.stringify({ sender: env.SMS_SENDER, recipient: to, content, type: 'transactional' }),
     });
-    return { ok: r.ok, status: r.status };
-  } catch (e) { return { ok: false, status: 0 }; }
+    // en cas de refus, on garde la raison donnée par Brevo (sinon impossible de diagnostiquer)
+    const detail = r.ok ? '' : (await r.text().catch(() => '')).slice(0, 300);
+    return { ok: r.ok, status: r.status, detail };
+  } catch (e) { return { ok: false, status: 0, detail: String(e).slice(0, 200) }; }
 }
 // TTL restant d'un code de vérification (KV impose 60 s minimum)
 function nowLeft(ts) {
