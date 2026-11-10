@@ -213,6 +213,8 @@ export default {
             sms_credits: smsCredits,
             firebase_db_url: !!env.FIREBASE_DB_URL,          // indispensable aux rappels (Cron + /reminder-now)
             last_sms_error: JSON.parse((await env.SUBS.get('smsErr')) || 'null'),
+            // RDV dont le rappel SMS est parti (l'historique Brevo, lui, a plusieurs heures de retard)
+            reminded_sms: Object.keys(JSON.parse((await env.SUBS.get('reminded24')) || '{}')).sort(),
             email_credits: emailCredits,
             plan,
           }, 200, cors);
