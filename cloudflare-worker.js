@@ -211,6 +211,8 @@ export default {
             sms_config: !!env.SMS_SENDER,
             sms_sender: env.SMS_SENDER || '(non défini)',
             sms_credits: smsCredits,
+            firebase_db_url: !!env.FIREBASE_DB_URL,          // indispensable aux rappels (Cron + /reminder-now)
+            last_sms_error: JSON.parse((await env.SUBS.get('smsErr')) || 'null'),
             email_credits: emailCredits,
             plan,
           }, 200, cors);
@@ -313,7 +315,7 @@ export default {
         if (!c || !c.phone) return reply({ ok: true, skipped: 'no_phone' }, 200, cors);
         const us = key.indexOf('_');
         const link = await shortManageLink(key, slot, c, env);
-        const r2 = await sendBrevoSms(c.phone, reminderSms(key.slice(0, us), key.slice(us + 1), now.date, link), env);
+        const r2 = await sendReminderSms(c.phone, key.slice(0, us), key.slice(us + 1), now.date, link, env);
         if (r2.ok) { reminded24[key] = true; await env.SUBS.put('reminded24', JSON.stringify(reminded24)); }
         return reply({ ok: r2.ok, sent: r2.ok, status: r2.status, detail: r2.detail }, 200, cors);
       }
@@ -355,7 +357,7 @@ export default {
           + (slotTxt ? 'RDV du ' + slotTxt + '\n' : '')
           + 'Valable 10 minutes.';
         const r = await sendBrevoSms(to, content, env);
-        if (!r.ok) return reply({ error: 'sms_failed', status: r.status, detail: r.detail }, 502, cors);
+        if (!r.ok) { await noteSmsError(r, 'code de vérification', env); return reply({ error: 'sms_failed', status: r.status, detail: r.detail }, 502, cors); }
         await env.SUBS.put('otp:' + to, JSON.stringify({ code, ts: nowSec, tries: 0 }), { expirationTtl: OTP_TTL_S });
         await env.SUBS.put('otprl:' + to, String(nPhone + 1), { expirationTtl: 3600 });
         await env.SUBS.put('otpip:' + ip, String(nIp + 1), { expirationTtl: 3600 });
@@ -437,6 +439,25 @@ async function sendBrevoSms(phone, content, env) {
     return { ok: r.ok, status: r.status, detail };
   } catch (e) { return { ok: false, status: 0, detail: String(e).slice(0, 200) }; }
 }
+/* Envoie le rappel complet (avec l'accès au salon) ; si Brevo le refuse, renvoie aussitôt
+   l'ancienne version courte (1 SMS, éprouvée) pour que le client soit quand même prévenu. */
+async function sendReminderSms(phone, date, time, todayIso, link, env) {
+  const r = await sendBrevoSms(phone, reminderSms(date, time, todayIso, link), env);
+  if (r.ok || r.status === 0) return r;
+  await noteSmsError(r, 'rappel complet', env);
+  const r2 = await sendBrevoSms(phone, reminderSmsShort(date, time, todayIso, link), env);
+  if (!r2.ok) await noteSmsError(r2, 'rappel court', env);
+  return r2;
+}
+/* Garde la dernière raison de refus de Brevo (lue par /health).
+   Au plus 1 écriture KV toutes les 30 min pour la même erreur : quota de 1 000 écritures/jour. */
+async function noteSmsError(r, what, env) {
+  try {
+    const prev = JSON.parse((await env.SUBS.get('smsErr')) || 'null');
+    if (prev && prev.detail === r.detail && prev.what === what && Date.now() - prev.at < 30 * 60e3) return;
+    await env.SUBS.put('smsErr', JSON.stringify({ at: Date.now(), when: new Date().toISOString(), what, status: r.status, detail: r.detail }));
+  } catch (e) {}
+}
 // TTL restant d'un code de vérification (KV impose 60 s minimum)
 function nowLeft(ts) {
   return Math.max(60, OTP_TTL_S - (Math.floor(Date.now() / 1000) - ts));
@@ -476,6 +497,15 @@ function reminderSms(date, time, todayIso, link) {
     + 'Accès : Interphone Blade Society, batiment A, étage 3, 2ème bureau à droite\n\n'   // « batiment » sans â (voir plus haut)
     + 'A bientot !\n'
     + '06 44 16 44 99';
+}
+// ancienne version (1 SMS) : repli si Brevo refuse la version complète
+function reminderSmsShort(date, time, todayIso, link) {
+  const d = date.split('-');
+  const quand = (date === todayIso) ? "aujourd'hui" : 'demain';
+  return 'Blade Society\n\n'
+    + 'Rappel : votre rendez-vous est prévu ' + quand + ' ' + d[2] + '/' + d[1] + ' à ' + frTimeFR(time) + '.\n\n'
+    + (link ? 'Modifier ou annuler : ' + link : 'Modifier ou annuler : le lien est dans votre email.') + '\n\n'
+    + 'A bientot !';
 }
 // minutes restantes avant un créneau "aaaa-mm-jj_hh:mm", vues de Paris
 function minutesUntil(key, now) {
@@ -724,7 +754,7 @@ async function sendReminders(env) {
        à moins de 24h du créneau, pour laquelle la fenêtre des 24h ne se présentera jamais. */
     if (minsUntil > 0 && minsUntil <= 1450 && !reminded24[key] && c.phone && env.SMS_SENDER) {
       const link = await shortManageLink(key, sl, c, env);
-      const r = await sendBrevoSms(c.phone, reminderSms(date, time, now.date, link), env);
+      const r = await sendReminderSms(c.phone, date, time, now.date, link, env);
       if (r.ok) { reminded24[key] = true; changed24 = true; }
     }
   }
